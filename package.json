@@ -1,11 +1,11 @@
 {
   "name": "fa-gallery-downloader",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "Dead simple gallery download for FurAffinity",
   "main": "index.js",
   "type": "module",
   "bin": "./index.js",
-  "author": "SpottedSqueak@gmail.com",
+  "author": "neon@alphaneon.blue",
   "license": "MIT",
   "scripts": {
     "start": "node index.js",

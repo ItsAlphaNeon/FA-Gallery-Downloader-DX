@@ -14,8 +14,8 @@ export default {
           </div>
         </div>
         <h2 class="startup-title">
-          🐾 FA Gallery Downloader 🐾
-          <span>by SpottedSqueak</span>
+          🐾 FA Gallery Downloader DX 🐾
+          <span>by SpottedSqueak, maintained by AlphaNeon</span>
         </h2>
       </div>
       <startup-form :is-logged-in="!!this.username" :outsideUsername="queryName" :outsideActive="isActive" :accounts="accounts" :download-accounts="downloadAccounts" @send-data="sendFormData" @send-event="sendEvent"></startup-form>
@@ -45,7 +45,7 @@ export default {
       downloadAccounts: [],
       version: '',
       newVersion: '',
-      githubLink: 'https://github.com/SpottedSqueak/FA-Gallery-Downloader/releases',
+      githubLink: 'https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases',
     };
   },
   beforeCreate() {
