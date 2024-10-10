@@ -1,5 +1,5 @@
 {
-  "name": "fa-gallery-downloader",
+  "name": "fa-gallery-downloader-dx",
   "version": "2.5.2",
   "description": "Dead simple gallery download for FurAffinity",
   "main": "index.js",

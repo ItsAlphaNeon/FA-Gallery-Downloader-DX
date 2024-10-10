@@ -17,13 +17,13 @@ jobs:
           - os: windows
             build: |
               npx package
-              mv ../FA-Gallery-Downloader.zip ./fa-gallery-downloader-${{github.ref_name}}.zip
+              mv ../FA-Gallery-Downloader-DX.zip ./fa-gallery-downloader-dx-${{github.ref_name}}.zip
             artifact: fa-gallery-downloader-${{github.ref_name}}.zip
           - os: ubuntu
             build: |
               npx package
-              mv ../FA-Gallery-Downloader.tar.gz ./fa-gallery-downloader-${{github.ref_name}}.tar.gz
-            artifact: fa-gallery-downloader-${{github.ref_name}}.tar.gz
+              mv ../FA-Gallery-Downloader-DX.tar.gz ./fa-gallery-downloader-dx-${{github.ref_name}}.tar.gz
+            artifact: fa-gallery-downloader-dx-${{github.ref_name}}.tar.gz
     runs-on: ${{matrix.os}}-latest
     steps:
       - uses: actions/checkout@main
@@ -45,10 +45,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@main
         with:
-          name: fa-gallery-downloader-${{github.ref_name}}.zip
+          name: fa-gallery-downloader-dx-${{github.ref_name}}.zip
       - uses: actions/download-artifact@main
         with:
-          name: fa-gallery-downloader-${{github.ref_name}}.tar.gz
+          name: fa-gallery-downloader-dx-${{github.ref_name}}.tar.gz
       - uses: actions/create-release@v1
         id: create-release
         env:
