@@ -1,4 +1,4 @@
-# 🐾 FA Gallery Downloader 🐾
+# 🐾 FA Gallery Downloader DX 🐾
 
 ### Dead simple gallery download for FurAffinity
 ### Originally created by SpottedSqueak.
