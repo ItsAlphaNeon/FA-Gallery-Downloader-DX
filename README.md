@@ -3,10 +3,13 @@
 ### Dead simple gallery download for FurAffinity
 ### Originally created by SpottedSqueak.
 
--=-=-=-=-=-=-
+-=-=-=-=-
 *Thank you SpottedSqueak for your contributions to the furry fandom.
 Rest in peace* 🐁🌼
--=-=-=-=-=-=-
+-=-=-=-=-
+
+## Contributing
+Contributions to maintaining this are accepted, please make a pull request if you would like to contribute.
 
 ---
 ### [> Download Latest Release <](https://github.com/SpottedSqueak/FA-Gallery-Downloader/releases)
