@@ -62,14 +62,14 @@ jobs:
           GITHUB_TOKEN: ${{secrets.MY_GITHUB_TOKEN}}
         with:
           upload_url: ${{steps.create-release.outputs.upload_url}}
-          asset_path: fa-gallery-downloader-${{github.ref_name}}.zip
-          asset_name: fa-gallery-downloader-${{github.ref_name}}.zip
+          asset_path: fa-gallery-downloader-dx-${{github.ref_name}}.zip
+          asset_name: fa-gallery-downloader-dx-${{github.ref_name}}.zip
           asset_content_type: application/zip
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{secrets.MY_GITHUB_TOKEN}}
         with:
           upload_url: ${{steps.create-release.outputs.upload_url}}
-          asset_path: fa-gallery-downloader-${{github.ref_name}}.tar.gz
-          asset_name: fa-gallery-downloader-${{github.ref_name}}.tar.gz
+          asset_path: fa-gallery-downloader-dx-${{github.ref_name}}.tar.gz
+          asset_name: fa-gallery-downloader-dx-${{github.ref_name}}.tar.gz
           asset_content_type: application/gzip
