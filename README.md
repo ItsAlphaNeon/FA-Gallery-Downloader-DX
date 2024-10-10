@@ -1,6 +1,13 @@
 # 🐾 FA Gallery Downloader 🐾
 
 ### Dead simple gallery download for FurAffinity
+### Originally created by SpottedSqueak.
+
+-=-=-=-=-=-=-
+*Thank you SpottedSqueak for your contributions to the furry fandom.
+Rest in peace* 🐁🌼
+-=-=-=-=-=-=-
+
 ---
 ### [> Download Latest Release <](https://github.com/SpottedSqueak/FA-Gallery-Downloader/releases)
 ---
@@ -83,9 +90,3 @@ Extract the zip folder in the same location as the previous version's executable
 ## Known Issues
 
 -- See the issues tab above!
-
-Check out my stuff on FA if you'd like!
-
-**SFW:** https://www.furaffinity.net/user/forest-wolf
-
-**NSFW:** (You can find it! :P)
