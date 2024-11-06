@@ -2,7 +2,7 @@
   --bg-color: #1b1b1d;
   --component-bg-color: #353b45;
   --component-hover-color: #576175;
-  --border-radius: 5px;
+  --border-radius: 10px;
   --border-color: #cfd3eb;
   --link-color: #e2ecf3;
   --alert-red: #c01010;
@@ -15,6 +15,7 @@ body {
   background: var(--bg-color);
   color: var(--border-color);
   font-family: 'Open Sans';
+  text-align: left;
 }
 a, a:visited {
   color: var(--link-color);
@@ -123,6 +124,10 @@ li > button {
 .status-container {
   grid-area: span br;
   word-break: break-all;
+}
+
+.status-container div {
+  border-radius: 10px;
 }
 .logged-in-status {
   display: block;
@@ -298,4 +303,15 @@ label .warning {
 }
 .has-update {
   color: red !important;
+}
+
+.credits {
+  font-size: 0.5em;
+  color: var(--border-color);
+  color: #979aa9;
+  padding-left: 63px;
+}
+.title-container {
+  display: flex;
+  justify-content: space-between;
 }

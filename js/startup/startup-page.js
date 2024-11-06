@@ -15,7 +15,9 @@ export default {
         </div>
         <h2 class="startup-title">
           🐾 FA Gallery Downloader DX 🐾
-          <span>by SpottedSqueak, maintained by AlphaNeon</span>
+         <div class="credits">
+          by SpottedSqueak, maintained by AlphaNeon
+        </div>
         </h2>
       </div>
       <startup-form :is-logged-in="!!this.username" :outsideUsername="queryName" :outsideActive="isActive" :accounts="accounts" :download-accounts="downloadAccounts" @send-data="sendFormData" @send-event="sendEvent"></startup-form>
