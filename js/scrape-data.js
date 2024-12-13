@@ -54,7 +54,7 @@ export async function getSubmissionLinks({ url, username, isScraps = false, isFa
     currLinks = currLinks += newLinks.length;
     currPageCount++;
     if (isFavorites) {
-      nextPage = $(`.pagination a.right`).attr('href');
+      nextPage = $(`form[action$="next"]`).attr('action');
       if (nextPage) nextPage = url.split('/favorite')[0] + nextPage;
       else break;
     }
