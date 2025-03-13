@@ -103,7 +103,15 @@ export default {
         sortOrder: this.sortOrder,
       };
       return window.getGalleryPage(payload)
-      .then(results => _this.results = results);
+        .then(results => {
+          _this.results = results.map(result => {
+            const mappedResult = {
+              ...result,
+              pretty_name: (result.pretty_username || '').trim() || result.username,
+            };
+            return mappedResult;
+          });
+        });
     },
     async loadSubmission(id, noScroll) {
       console.log(`Loading submission: ${id}`);

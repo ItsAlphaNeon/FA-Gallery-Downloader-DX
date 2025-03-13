@@ -31,7 +31,7 @@ async function startDataScraping(uName = username, scrapeGallery = true, scrapeC
       const $ = await getHTML(FA_USER_BASE + name).catch(() => false);
       if (!$ || /system.error/i.test($('title').text())) {
         console.log(`[Warn] Invalid username: ${name}`);
-        continue;
+        break;
       }
       // Scrape data from gallery pages
       if (scrapeGallery) {

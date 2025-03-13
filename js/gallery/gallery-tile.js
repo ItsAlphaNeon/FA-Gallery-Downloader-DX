@@ -14,12 +14,12 @@ export default {
       </div>
       <div class="gallery-tile__info">
         <div class="gallery-tile__title" @click="loadSubmission" :alt="altText" :title="altText">{{title}}</div>
-        <div class="gallery-tile__user">by <span @click="searchUser" :alt="userAltText" :title="userAltText">{{username}}</span></div>
+        <div class="gallery-tile__user">by <span @click="searchUser" :alt="userAltText" :title="userAltText">{{pretty_username}}</span></div>
         <div class="gallery-tile__date" :title="date_uploaded" :alt="date_uploaded">Uploaded: {{relativeDate}}</div>
       </div>
     </div>
   `,
-  props: ['id', 'title', 'username', 'account_name', 'content_name', 'date_uploaded', 'is_content_saved', 'thumbnail_name', 'is_thumbnail_saved', 'rating'],
+  props: ['id', 'title', 'username', 'pretty_name', 'account_name', 'content_name', 'date_uploaded', 'is_content_saved', 'thumbnail_name', 'is_thumbnail_saved', 'rating'],
   emits: ['loadSubmission', 'searchUser'],
   data() {
     return {
@@ -33,20 +33,22 @@ export default {
     };
   },
   beforeMount() {
-   this.getContentPath();
-   this.error = false;
+    this.getContentPath();
+    this.error = false;
   },
   computed: {
     cleanAccountName() {
       return this.account_name.replace(/\.$/, '._');
     },
+    pretty_username() {
+      return this.pretty_name && this.pretty_name.trim() !== '' ? this.pretty_name : this.username;
+    },
     isImg() {
       return (
-        this.contentPath
-        && this.is_content_saved
-        && (/(png|jpg|gif|webp|jpeg)$/i.test(this.content_name)
-            || this.isThumbnail
-        ) && !this.isDefaultThumbnail
+        this.contentPath &&
+        this.is_content_saved &&
+        (/(png|jpg|gif|webp|jpeg)$/i.test(this.content_name) || this.isThumbnail) &&
+        !this.isDefaultThumbnail
       );
     },
     isThumbnail() {
@@ -76,13 +78,12 @@ export default {
       this.error = false;
       const img = l.target;
       const parent = img.parentElement;
-      // Nothing should ever be this perfectly tiny
       if (!img.clientWidth) {
         await this.waitFor();
         return this.onImgLoad({ target: img });
       }
       this.isDefaultThumbnail = img.clientWidth === 50 && img.clientHeight === 50;
-      this.isTooSmall = !this.isDefaultThumbnail && img.clientHeight <= parent.offsetHeight/2;
+      this.isTooSmall = !this.isDefaultThumbnail && img.clientHeight <= parent.offsetHeight / 2;
       this.isTooWide = !this.isDefaultThumbnail && img.clientWidth > parent.offsetWidth;
     },
     onError() {
