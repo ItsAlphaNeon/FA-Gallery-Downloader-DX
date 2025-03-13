@@ -53,13 +53,13 @@ export function getPromise(method) {
 }
 // Create debug log
 const fileOptions = { mode: 0o770 };
-const logFileName = join(logDir, `debug-${new Date().toJSON().slice(0,10)}.log`);
+const logFileName = join(logDir, `debug-${new Date().toJSON().slice(0, 10)}.log`);
 let logFile = null;
 let unhookErr, unhookLog;
 
 export function setup() {
   fs.ensureFileSync(logFileName);
-  logFile = fs.createWriteStream(logFileName, { flags : 'as', encoding: 'utf8', ...fileOptions });
+  logFile = fs.createWriteStream(logFileName, { flags: 'as', encoding: 'utf8', ...fileOptions });
   // Thanks to: https://gist.github.com/pguillory/729616 and https://stackoverflow.com/a/41135457
   function hook_stdout(stream, callback) {
     var old_write = stream.write;
@@ -83,7 +83,7 @@ export function setup() {
   unhookErr = hook_stdout(process.stderr, saveToLog);
   logFile.write('---\n');
 
-  process.on('uncaughtException', async function(err) {
+  process.on('uncaughtException', async function (err) {
     //logFile.write(`${err.stack}`);
     stop.now = true;
     console.error(err);
@@ -117,11 +117,11 @@ export async function waitFor(t = 1000) {
  * @param {Object} data 
  * @param {String} id 
  */
-export async function logProgress(progress = {}, bar='file') {
+export async function logProgress(progress = {}, bar = 'file') {
   const { transferred: value, total: max, filename } = progress;
   let reset = !max;
   if (!page?.isClosed()) {
-    const data = {value, max, reset, bar, filename };
+    const data = { value, max, reset, bar, filename };
     await page.evaluate(`window.logProgress?.(${JSON.stringify(data)})`);
   }
 }
@@ -140,20 +140,22 @@ logProgress.busy = (id) => {
 export function getHTML(url, sendHeaders = true) {
   const headers = sendHeaders ? faRequestHeaders : {};
   headers.timeout = { response: 3000 };
-  return got(url, { ...headers, ...{
-    timeout: { response: 3000 },
-    retry: {
-      limit: maxRetries,
-    },
-  }}).text()
-  .then((result) => {
-    console.log(`Loaded: ${url}`);
-    return cheerio.load(result);
-  }).catch((e) => {
-    console.log(`[Warn] Cannot get HTML for: ${url}`);
-    // console.error(e);
-    return Promise.reject(e);
-  });
+  return got(url, {
+    ...headers, ...{
+      timeout: { response: 3000 },
+      retry: {
+        limit: maxRetries,
+      },
+    }
+  }).text()
+    .then((result) => {
+      console.log(`Loaded: ${url}`);
+      return cheerio.load(result);
+    }).catch((e) => {
+      console.log(`[Warn] Cannot get HTML for: ${url}`);
+      // console.error(e);
+      return Promise.reject(e);
+    });
 }
 /**
  * Checks Github for the latest version.
@@ -194,7 +196,7 @@ export async function sendStartupInfo(data = {}) {
   return page.evaluate(`window.setPageInfo?.(${JSON.stringify(data)})`);
 }
 export async function setActive(val = true) {
-  if(stop.now) return;
+  if (stop.now) return;
   return page.evaluate(`window.setActive?.(${val})`);
 }
 /**
@@ -206,6 +208,18 @@ export async function init(newPage) {
   if (isWindows) {
     await import('node-hide-console-window')
       .then((hc) => { hc.hideConsole(); })
-      .catch(() => () => {});
+      .catch(() => () => { });
   }
+}
+/**
+ * Saves the given data to a file on the local system for debugging.
+ * @param {String} filename
+ */
+export function saveDebugFile(filename, data) {
+  let dirPath = join(logDir, 'SavedObjects');
+  fs.ensureDirSync(dirPath);
+  let filePath = join(dirPath, filename);
+  fs.writeFile(filePath, data, (err) => {
+    if (err) console.error('Error writing debug file:', err);
+  });
 }

@@ -254,7 +254,8 @@ export function getGalleryPage(offset = 0, count = 25, query = {}, sortOrder ='D
     is_content_saved,
     thumbnail_name,
     is_thumbnail_saved,
-    rating
+    rating,
+    pretty_username
   FROM subdata
   WHERE id IS NOT NULL
   ${searchQuery}
@@ -517,7 +518,8 @@ export async function init() {
           content_url TEXT, 
           content_name TEXT, 
           is_content_saved INTEGER,
-          username TEXT
+          username TEXT,
+          pretty_username TEXT
         )`)
         .then(db.exec(`PRAGMA user_version = 2`));
     }

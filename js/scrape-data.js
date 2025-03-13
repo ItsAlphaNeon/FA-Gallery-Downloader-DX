@@ -1,7 +1,7 @@
 import random from 'random';
 import { FA_URL_BASE } from './constants.js';
 import * as db from './database-interface.js';
-import { logProgress, waitFor, getHTML, stop, sendStartupInfo } from './utils.js';
+import { logProgress, waitFor, getHTML, stop, sendStartupInfo, saveDebugFile } from './utils.js';
 
 const scrapeID = 'scrape-div';
 const progressID = 'data';
@@ -158,12 +158,18 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
     // Get data if page exists
     let date = $('.submission-id-sub-container .popup_date').attr('title').trim();
     if (/ago$/i.test(date)) date = $('.submission-id-sub-container .popup_date').text().trim();
-    const username = $('.submission-title + a').text().trim().toLowerCase();
+    // Updated selector to match the raw HTML structure
+    const prettyUsername = $('.c-usernameBlockSimple__displayName')
+      .first()
+      .text()
+      .trim();
+    let username = prettyUsername.toLowerCase()
     const data = {
       id: links[index].url.split('view/')[1].split('/')[0],
       title: $('.submission-title').text().trim(),
       username,
       account_name: username.replace(/_/gi, ''),
+      pretty_username: prettyUsername,
       desc: $('.submission-description').html().trim(),
       tags: $('.tags-row').text().match(/([A-Z])\w+/gmi)?.join(','),
       content_name: $('.download > a').attr('href').split('/').pop(),
@@ -179,7 +185,7 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
       data.thumbnail_url = 'https:' + data.thumbnail_url;
     // Save data to db
     await db.saveMetaData(links[index].url, data);
-    // Save comments
+    // Save comments 
     if (downloadComments) await scrapeComments($, data.id);
     index++;
     if (index % 2) await waitFor(random.int(1000, 2500));
