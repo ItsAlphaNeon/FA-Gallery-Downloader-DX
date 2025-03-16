@@ -62,18 +62,18 @@ async function downloadSetup({ content_url, content_name, downloadLocation, retr
         const percentage = Math.round(percent * 100);
         logProgress({ transferred, total, percentage, filename: getTotals() }, progressID);
       })
-      .on('error', (error) => {
-        logProgress.reset(progressID);
-        console.error(`Download failed: ${error.message} for ${content_name}`);
-        if (!fStream.closed) fStream.end();
-        reject();
-      });
+        .on('error', (error) => {
+          logProgress.reset(progressID);
+          console.error(`Download failed: ${error.message} for ${content_name}`);
+          if (!fStream.closed) fStream.end();
+          reject();
+        });
 
       fStream.on('error', (error) => {
-          logProgress.reset(progressID);
-          console.error(`Could not write file '${content_name}' to system: ${error.message}`);
-          reject();
-        })
+        logProgress.reset(progressID);
+        console.error(`Could not write file '${content_name}' to system: ${error.message}`);
+        reject();
+      })
         .on('finish', () => {
           // console.log(`[File] Downloaded: '${content_name}'`, progressID);
           resolve();
@@ -94,7 +94,7 @@ async function downloadSetup({ content_url, content_name, downloadLocation, retr
     });
   } else {
     console.warn(`File not found: '${content_name}'`);
-    if (!await isSiteActive()) 
+    if (!await isSiteActive())
       return Promise.reject(new Error('Site down'));
     else return Promise.reject(new Error('Not found'));
   }
@@ -106,8 +106,9 @@ export async function cleanupFileStructure() {
   names.forEach(({ username, account_name }) => {
     const oldPath = join(downloadDir, username);
     const newPath = join(downloadDir, account_name);
-    if (oldPath != newPath && fs.existsSync(oldPath))
+    if (oldPath != newPath && fs.existsSync(oldPath)) {
       fs.renameSync(oldPath, newPath);
+    }
   });
   // Move unmoved content
   const content = await db.getAllUnmovedContentData();
@@ -118,16 +119,16 @@ export async function cleanupFileStructure() {
     const { account_name, content_name } = content[index];
     fs.ensureDirSync(join(downloadDir, account_name), dlOptions);
     return fs.move(join(downloadDir, content_name), join(downloadDir, account_name, content_name))
-    .then(() => {
-      // Set file as moved properly
-      return db.setContentMoved(content_name);
-    }).catch(() => {
-      // Do some fallback to make sure it wasn't already moved?
-      if (fs.existsSync(join(downloadDir, account_name, content_name)))
+      .then(() => {
+        // Set file as moved properly
         return db.setContentMoved(content_name);
-      else 
-        console.log(`[Warn] File not moved: ${content_name}`);
-    });
+      }).catch(() => {
+        // Do some fallback to make sure it wasn't already moved?
+        if (fs.existsSync(join(downloadDir, account_name, content_name)))
+          return db.setContentMoved(content_name);
+        else
+          console.log(`[Warn] File not moved: ${content_name}`);
+      });
   }
   let i = 0;
   while (i < content.length) {
@@ -182,7 +183,7 @@ export async function downloadSpecificContent({ content_url, content_name, accou
       if (/site.down/gi.test(e.message)) {
         stop.now = true;
         return console.log(`[Data] FA appears to be down, stopping all downloads`);
-      } else if(/not.found/gi.test(e.message)) {
+      } else if (/not.found/gi.test(e.message)) {
         db.setContentMissing(content_name);
       }
     });
@@ -191,7 +192,7 @@ export async function downloadSpecificContent({ content_url, content_name, accou
  * Downloads the specified thumbnail.
  * @returns 
  */
-export async function downloadThumbnail({ thumbnail_url, url:contentUrl, account_name }) {
+export async function downloadThumbnail({ thumbnail_url, url: contentUrl, account_name }) {
   if (stop.now) return;
   let content_url = thumbnail_url || '';
   // If blank...
@@ -212,10 +213,10 @@ export async function downloadThumbnail({ thumbnail_url, url:contentUrl, account
       if (/site.down/gi.test(e.message)) {
         stop.now = true;
         return console.log(`[Data] FA appears to be down, stopping all downloads`);
-      } else if(/not.found/gi.test(e.message)) {
+      } else if (/not.found/gi.test(e.message)) {
         db.setThumbnailMissing(content_url);
       }
-    });      
+    });
 }
 /**
  * Gets all download urls and records when they're done.
