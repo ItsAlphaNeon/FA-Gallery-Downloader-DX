@@ -56,15 +56,11 @@ export default {
     },
     computedImgPath() {
       const base = this.contentPath;
-      // Debug
-      console.log('[Debug] Base URL: ' + base);
       const account = this.cleanAccountName;
       // Use forward slash to join the URL parts
       if (this.thumbnail_name && this.is_thumbnail_saved) {
         return `${base}/${account}/thumbnail/${this.thumbnail_name}`;
       }
-      // Debug
-      console.log('[Debug] Content name: ' + this.content_name);
       return `${base}/${account}/${this.content_name}`;
     },
     fileExtension() {
@@ -99,8 +95,6 @@ export default {
     },
     loadSubmission() {
       this.$emit('loadSubmission', this.id);
-      // Debug
-      console.log('[Debug] Local URL: ' + this.computedImgPath);
     },
     searchUser() {
       this.$emit('searchUser', this.username);
