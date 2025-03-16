@@ -8,7 +8,7 @@ import open from 'open';
 import { pathToFileURL } from 'url';
 
 const galleryLink = pathToFileURL(resolve(__dirname, './html/gallery.html')).href;
-const contentPath = pathToFileURL(resolve(__dirname, './fa_gallery_downloader/downloaded_content')).href;
+const contentPath = pathToFileURL(resolve('file://', '../fa_gallery_downloader/downloaded_content')).href;
 
 let page = null;
 
