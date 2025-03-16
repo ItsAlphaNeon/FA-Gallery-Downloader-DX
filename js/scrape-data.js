@@ -159,10 +159,12 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
     let date = $('.submission-id-sub-container .popup_date').attr('title').trim();
     if (/ago$/i.test(date)) date = $('.submission-id-sub-container .popup_date').text().trim();
     // Updated selector to match the raw HTML structure
-    const prettyUsername = $('.c-usernameBlockSimple__displayName')
+    let prettyUsername = $('.c-usernameBlockSimple__displayName')
       .first()
       .text()
       .trim();
+    // Fix for username weirdness sometimes
+    if (prettyUsername.toString().includes('\'s')) prettyUsername = prettyUsername.toString().replace(/'s/gi, '');
     let username = prettyUsername.toLowerCase()
     const data = {
       id: links[index].url.split('view/')[1].split('/')[0],
