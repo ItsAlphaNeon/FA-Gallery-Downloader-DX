@@ -164,7 +164,10 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
       .text()
       .trim();
     // Fix for username weirdness sometimes
-    if (prettyUsername.toString().includes('\'s')) prettyUsername = prettyUsername.toString().replace(/'s/gi, '');
+    // TODO: Fix this, as it is a hacky solution to a problem that should not exist
+    if (prettyUsername.toString().endsWith("'s")) {
+      prettyUsername = prettyUsername.toString().slice(0, -2);
+    }
     let username = prettyUsername.toLowerCase()
     const data = {
       id: links[index].url.split('view/')[1].split('/')[0],
