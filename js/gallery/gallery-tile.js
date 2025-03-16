@@ -55,9 +55,17 @@ export default {
       return this.thumbnail_name && this.is_thumbnail_saved;
     },
     computedImgPath() {
-      if (this.thumbnail_name && this.is_thumbnail_saved)
-        return `${this.contentPath}\\${this.cleanAccountName}\\thumbnail\\${this.thumbnail_name}`;
-      return `${this.contentPath}\\${this.cleanAccountName}\\${this.content_name}`;
+      const base = this.contentPath;
+      // Debug
+      console.log('[Debug] Base URL: ' + base);
+      const account = this.cleanAccountName;
+      // Use forward slash to join the URL parts
+      if (this.thumbnail_name && this.is_thumbnail_saved) {
+        return `${base}/${account}/thumbnail/${this.thumbnail_name}`;
+      }
+      // Debug
+      console.log('[Debug] Content name: ' + this.content_name);
+      return `${base}/${account}/${this.content_name}`;
     },
     fileExtension() {
       const fileExtension = this.content_name.split('.').pop().toUpperCase();
@@ -91,6 +99,8 @@ export default {
     },
     loadSubmission() {
       this.$emit('loadSubmission', this.id);
+      // Debug
+      console.log('[Debug] Local URL: ' + this.computedImgPath);
     },
     searchUser() {
       this.$emit('searchUser', this.username);

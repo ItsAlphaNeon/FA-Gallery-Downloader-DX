@@ -13,7 +13,7 @@ import { init as exportData } from './js/export-data.js';
 import { spawn } from 'node:child_process';
 import {  default as process } from 'node:process';
 
-const startupLink = join('file://', __dirname, './html/startup.html');
+const startupLink = `file://${resolve(__dirname, './html/startup.html')}`;
 
 let inProgress = false;
 async function startDataScraping(uName = username, scrapeGallery = true, scrapeComments = true, scrapeFavorites) {
