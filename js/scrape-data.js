@@ -167,6 +167,8 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
     // TODO: Fix this, as it is a hacky solution to a problem that should not exist
     if (prettyUsername.toString().endsWith("'s")) {
       prettyUsername = prettyUsername.toString().slice(0, -2);
+    } else if (prettyUsername.toString().endsWith("'")) {
+      prettyUsername = prettyUsername.toString().slice(0, -1);
     }
     let username = prettyUsername.toLowerCase()
     const data = {
