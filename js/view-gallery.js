@@ -5,9 +5,10 @@ import { scrapeComments } from './scrape-data.js';
 import { downloadSpecificContent } from './download-content.js';
 import { handleLogin, username } from './login.js';
 import open from 'open';
+import { pathToFileURL } from 'url';
 
-const galleryLink = join('file://', __dirname, './html/gallery.html');
-const contentPath = resolve('file://', '../fa_gallery_downloader/downloaded_content' );
+const galleryLink = pathToFileURL(resolve(__dirname, './html/gallery.html')).href;
+const contentPath = pathToFileURL(resolve(__dirname, './fa_gallery_downloader/downloaded_content')).href;
 
 let page = null;
 
