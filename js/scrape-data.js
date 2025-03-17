@@ -159,18 +159,20 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
     let date = $('.submission-id-sub-container .popup_date').attr('title').trim();
     if (/ago$/i.test(date)) date = $('.submission-id-sub-container .popup_date').text().trim();
     // Updated selector to match the raw HTML structure
-    let prettyUsername = $('.c-usernameBlockSimple__displayName')
+    let prettyUsername = $('.section-header .c-usernameBlockSimple__displayName')
       .first()
       .text()
       .trim();
     // Fix for username weirdness sometimes
     // TODO: Fix this, as it is a hacky solution to a problem that should not exist
-    if (prettyUsername.toString().endsWith("'s")) {
-      prettyUsername = prettyUsername.toString().slice(0, -2);
-    } else if (prettyUsername.toString().endsWith("'")) {
-      prettyUsername = prettyUsername.toString().slice(0, -1);
-    }
-    let username = prettyUsername.toLowerCase()
+    // if (prettyUsername.toString().endsWith("'s")) {
+    //   prettyUsername = prettyUsername.toString().slice(0, -2);
+    // } else if (prettyUsername.toString().endsWith("'")) {
+    //   prettyUsername = prettyUsername.toString().slice(0, -1);
+    // }
+    // https://www.furaffinity.net/user/felisrandomis/
+    let username = $('.section-header .c-usernameBlockSimple__displayName')
+      .attr('title').trim();
     const data = {
       id: links[index].url.split('view/')[1].split('/')[0],
       title: $('.submission-title').text().trim(),
