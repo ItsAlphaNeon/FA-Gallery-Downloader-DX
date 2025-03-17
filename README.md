@@ -3,19 +3,16 @@
 ### Dead simple gallery download for FurAffinity
 ### Originally created by SpottedSqueak.
 
--=-=-=-=-
 *Thank you SpottedSqueak for your contributions to the furry fandom.
 Rest in peace* 🐁🌼
--=-=-=-=-
 
 ## Contributing
 Contributions to maintaining this are accepted, please make a pull request if you would like to contribute.
 
 ---
-### [> Download Latest Release <](https://github.com/SpottedSqueak/FA-Gallery-Downloader/releases)
+### [> Download Latest Release <](https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases)
 ---
 ## Dev Info
-Built using `node v22.6.0` and `npm v10.5.1`
 
 Install: `npm i`
 
@@ -68,28 +65,3 @@ First off, you'll need to log in to an FA account to be able to export it! Once 
 You'll need to import *each numbered directory* into Postybirb; Postybirb's directory importer had issues with handling more than 50 submissions at a time, hence this system.
 
 ***NOTE:*** If you do not want to include the **"originally posted on"** date in the imported description in Postybirb, make sure to uncheck that option below the `Export` button.
-
-
-## Updating from v1.4 and below
-
-Extract the zip folder in the same location as the previous version's executable. Run the new program and if you're missing any data (logged in accounts, gallery data, etc.) click the "Import Data" button. Assuming you have the `fa_gallery_downloader` folder in the same folder, it will copy over all of that data and restart.
-
-## #DONE
-
-- [x] Hide console (Only on Windows!)
-- [x] Allow downloads from other user's galleries (still requires login)
-- [x] Allow downloads of submission comments as well (not user icons though)
-- [x] Downloads a valid version of Chromium if none exist
-- [x] Log errors to file (Found under `/fa_gallery_downloader/logs`)
-- [x] Clean up the interface some (better logging, download animations/progress bars)
-- [x] Add a locally browsable copy of the given FA gallery (includes SEARCH!)
-- [x] Export data for Postybirb+ integration
-- [x] ~~Format description text to BBCode for ease of cross posting (Maybe?)~~ Postybirb integration negates this point
-- [x] ~~Skip submission link gathering when traversing previously traversed galleries (yes, that makes sense)~~ (Not possible with how FA galleries work)
-## #TODO
-
-- [ ] Fix comic navigation so you can move between them inside of the gallery viewer
-
-## Known Issues
-
--- See the issues tab above!
