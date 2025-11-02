@@ -24,32 +24,84 @@ export async function initGallery(browser) {
   page = await browser.newPage();
   await page.bringToFront();
   page.on('close', () => page = null);
-  await page.exposeFunction('getGalleryPage', async ({ offset, count, query, sortOrder } = {}) => {
-    // Get all data for given gallery page using offset
-    const data = await db.getGalleryPage(offset, count, query, sortOrder);
-    return data;
+  
+  // Rebrowser-puppeteer compatibility: use CDP bindings instead of exposeFunction
+  // TODO: This is a mess, refactor later (chatgpt shitass code for complex binding testing)
+  const cdpSession = await page.createCDPSession();
+  await cdpSession.send('Runtime.enable');
+  
+  // Set up all binding listeners
+  cdpSession.on('Runtime.bindingCalled', async ({ name, payload }) => {
+    const { callId, data } = JSON.parse(payload);
+    let result;
+    
+    if (name === '__getGalleryPageBinding') {
+      result = await db.getGalleryPage(data.offset, data.count, data.query, data.sortOrder);
+    } else if (name === '__getSubmissionPageBinding') {
+      result = await db.getSubmissionPage(data);
+    } else if (name === '__downloadCommentsBinding') {
+      if (!username) await handleLogin(browser);
+      if (!username) result = false;
+      else {
+        const isComplete = await scrapeComments(null, data.id, data.url);
+        result = !!isComplete;
+      }
+    } else if (name === '__downloadContentBinding') {
+      if (!username) await handleLogin(browser);
+      if (!username) result = false;
+      else {
+        const isComplete = await downloadSpecificContent(data);
+        result = !!isComplete;
+      }
+    } else if (name === '__openUrlBinding') {
+      if (data) open(data);
+      return;
+    } else if (name === '__getContentPathBinding') {
+      result = contentPath;
+    }
+        await page.evaluate((callId, result) => {
+      if (window.__bindingCallbacks && window.__bindingCallbacks[callId]) {
+        window.__bindingCallbacks[callId](result);
+        delete window.__bindingCallbacks[callId];
+      }
+    }, callId, result);
   });
-  await page.exposeFunction('getSubmissionPage', async (id) => {
-    // Get all data for given submission page
-    const data = await db.getSubmissionPage(id);
-    return data;
+  
+  // Create all CDP bindings
+  await cdpSession.send('Runtime.addBinding', { name: '__getGalleryPageBinding' });
+  await cdpSession.send('Runtime.addBinding', { name: '__getSubmissionPageBinding' });
+  await cdpSession.send('Runtime.addBinding', { name: '__downloadCommentsBinding' });
+  await cdpSession.send('Runtime.addBinding', { name: '__downloadContentBinding' });
+  await cdpSession.send('Runtime.addBinding', { name: '__openUrlBinding' });
+  await cdpSession.send('Runtime.addBinding', { name: '__getContentPathBinding' });
+  
+  // Inject wrapper functions
+  await page.evaluateOnNewDocument(() => {
+    let callIdCounter = 0;
+    window.__bindingCallbacks = {};
+    
+    // Helper to create async wrapper functions
+    const createAsyncWrapper = (bindingName) => {
+      return (data) => {
+        return new Promise((resolve) => {
+          const callId = callIdCounter++;
+          window.__bindingCallbacks[callId] = resolve;
+          window[bindingName](JSON.stringify({ callId, data }));
+        });
+      };
+    };
+    
+    // Create wrapper functions for each binding
+    window.getGalleryPage = (params = {}) => createAsyncWrapper('__getGalleryPageBinding')(params);
+    window.getSubmissionPage = (id) => createAsyncWrapper('__getSubmissionPageBinding')(id);
+    window.downloadComments = (id, url) => createAsyncWrapper('__downloadCommentsBinding')({ id, url });
+    window.downloadContent = (contentInfo) => createAsyncWrapper('__downloadContentBinding')(contentInfo);
+    window.openUrl = (url) => {
+      window.__openUrlBinding(JSON.stringify({ callId: -1, data: url }));
+    };
+    window.getContentPath = () => createAsyncWrapper('__getContentPathBinding')(null);
   });
-  await page.exposeFunction('downloadComments', async (id, url) => {
-    if (!username) await handleLogin(browser);
-    if (!username) return false;
-    const isComplete = await scrapeComments(null, id, url);
-    return !!isComplete;
-  });
-  await page.exposeFunction('downloadContent', async (contentInfo) => {
-    if (!username) await handleLogin(browser);
-    if (!username) return false;
-    const isComplete = await downloadSpecificContent(contentInfo);
-    return !!isComplete;
-  });
-  await page.exposeFunction('openUrl', (url) => {
-    if (url) open(url);
-  });
-  await page.exposeFunction('getContentPath', () => contentPath);
+  
   page.on('domcontentloaded', sendData);
   await page.goto(galleryLink);
   page.on('console', msg => {

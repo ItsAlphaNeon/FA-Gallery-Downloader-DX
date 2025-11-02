@@ -72,8 +72,14 @@ async function init() {
   const { page, browser } = await setupBrowser();
   // Setup user logging
   await initUtils(page);
-  // Wait for path decision
-  await page.exposeFunction('userPath', async (data) => {
+  
+  // Rebrowser-puppeteer compatibility: Use CDP binding instead of exposeFunction
+  const cdpSession = await page.createCDPSession();
+  await cdpSession.send('Runtime.enable');
+  
+  cdpSession.on('Runtime.bindingCalled', async ({ name, payload }) => {
+    if (name !== '__userPathBinding') return;
+    const data = JSON.parse(payload);
     const { choice } = data;
     stop.reset();
     if (choice === 'login') {
@@ -165,6 +171,15 @@ async function init() {
       }
     }
   });
+  
+  await cdpSession.send('Runtime.addBinding', { name: '__userPathBinding' });
+
+  await page.evaluateOnNewDocument(() => {
+    window.userPath = (data) => {
+      window.__userPathBinding(JSON.stringify(data));
+    };
+  });
+  
   page.on('domcontentloaded', async () => {
     await sendStartupInfo(await releaseCheck());
   });

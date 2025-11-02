@@ -6,13 +6,12 @@ import * as cliProgress from 'cli-progress';
 import fs from 'fs-extra';
 import path from 'node:path';
 import puppeteer from 'puppeteer-extra';
-import * as pBrowsers from '@puppeteer/browsers';
+import * as pBrowsers from '@puppeteer/browsers'; // Switched to rebrowser, names are the same for compatability
 import adBlocker from 'puppeteer-extra-plugin-adblocker';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 // Puppeteer setup
 puppeteer.use(adBlocker({ blockTrackers: true }));
-puppeteer.use(stealthPlugin());
+// Stealth plugin is no longer supported, or needed for rebrowser.
 /**
  *  Get the browser info to load. Helps ensure we always get the same browser,
  *  even with updates.

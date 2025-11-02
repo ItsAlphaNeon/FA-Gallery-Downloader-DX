@@ -1,6 +1,6 @@
 {
   "name": "fa-gallery-downloader-dx",
-  "version": "2.6.4",
+  "version": "2.7.0",
   "description": "Dead simple gallery download for FurAffinity",
   "main": "index.js",
   "type": "module",
@@ -13,7 +13,9 @@
     "lint:fix": "eslint js --fix --ext .js",
     "lint:init": "eslint --init",
     "test": "npm run lint:fix",
-    "build": "npm ci && npx package"
+    "build": "npm ci && npx package",
+    "build-linux": "npm ci && npx package && node -e \"const fs=require('fs');const v=require('./package.json').version;fs.renameSync('../FA-Gallery-Downloader-DX.tar.gz','./fa-gallery-downloader-dx-v'+v+'.tar.gz')\"",
+    "build-windows": "npm ci && npx package && node -e \"const fs=require('fs');const v=require('./package.json').version;fs.renameSync('../FA-Gallery-Downloader-DX.zip','./fa-gallery-downloader-dx-v'+v+'.zip')\""
   },
   "dependencies": {
     "@puppeteer/browsers": "^2.2.3",
@@ -23,10 +25,10 @@
     "fs-extra": "^11.1.1",
     "got": "^13.0.0",
     "open": "^9.1.0",
-    "puppeteer-core": "^20.4.0",
+    "puppeteer": "npm:rebrowser-puppeteer@^24.8.1",
+    "puppeteer-core": "npm:rebrowser-puppeteer-core@^24.8.1",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-adblocker": "^2.13.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "random": "^4.1.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"

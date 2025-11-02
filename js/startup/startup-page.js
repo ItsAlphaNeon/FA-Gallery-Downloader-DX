@@ -71,7 +71,7 @@ export default {
   },
   mounted() {
     setInterval(() => {
-      window.userPath({ choice: 'release-check'});
+      window.userPath?.({ choice: 'release-check' });
     }, 10 * 60 * 1000);
   },
   computed: {
@@ -112,7 +112,7 @@ export default {
       if (data.length) data = { choice: data };
       if (data.choice === 'repair') this.isActive = true;
       if (data.choice === 'stop-all') this.isActive = false;
-      window.userPath?.(data);  
+      window.userPath?.(data);
     },
     fixIcon(e) {
       e.target.src = '../html/resources/_default.gif';

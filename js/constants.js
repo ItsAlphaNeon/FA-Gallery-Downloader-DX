@@ -10,11 +10,11 @@ export const DEFAULT_BROWSER_PARAMS = [
   '--allow-file-access-from-files',
   '--disable-extensions',
   '--disable-automation',
+  '--disable-blink-features=AutomationControlled',
 ];
 export const IGNORE_DEFAULT_PARAMS = [
   '--enable-automation',
   '--disable-site-isolation-trials',
-  '--disable-blink-features=AutomationControlled',
   `--enable-blink-features=IdleDetection`
 ];
 export const BROWSER_DIR = './fa_gallery_downloader/browser_profiles/';
