@@ -11,6 +11,8 @@ export const DEFAULT_BROWSER_PARAMS = [
   '--disable-extensions',
   '--disable-automation',
   '--disable-blink-features=AutomationControlled',
+  '--disable-notifications', // This removes the unsupported CLI banner
+  '--test-type' //  this too
 ];
 export const IGNORE_DEFAULT_PARAMS = [
   '--enable-automation',
