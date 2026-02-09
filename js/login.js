@@ -7,6 +7,7 @@ export let faRequestHeaders = {};
 export let username = '';
 let browser = null;
 let page = null;
+let loginLock = false;
 
 function setRequestHeaders(faCookies) {
   faRequestHeaders = {
@@ -18,6 +19,7 @@ function setRequestHeaders(faCookies) {
 export async function checkForOldTheme(page) {
   const $ = await getHTML(FA_URL_BASE).catch(() => false);
   if (!$) return console.log(`[Warn] FA might be down, please try again later`);
+  if (!setUsername($)) return;
   if (/classic/i.test($('body').data('static-path'))) {
     console.log(`[Warn] Using incompatible old FA theme, prompting user to update settings`);
     page = await browser.newPage();
@@ -82,6 +84,23 @@ export async function checkIfLoggedIn(newBrowser) {
 }
 
 async function logInUser() {
+  if (page) {
+    // If page exists but is closed, reset it
+    if (page.isClosed()) page = null;
+    else await page.bringToFront();
+  }
+  
+  // Check for rogue tabs
+  const pages = await browser.pages();
+  if (pages.length > 1) {
+    // Use the second tab if we don't have a page ref
+    if (!page) page = pages[1];
+    // Close any extras (idx > 1)
+    for (let i = 2; i < pages.length; i++) {
+        await pages[i].close();
+    }
+  }
+
   page = page || await browser.newPage();
   page.setDefaultNavigationTimeout(0);
   console.log('Not logged in! Requesting user to do so...');
@@ -108,15 +127,21 @@ export async function forceNewLogin(browser) {
 }
 
 export async function handleLogin(newBrowser = browser) {
+  if (loginLock) return console.log('[Warn] Login already in progress!');
+  loginLock = true;
   browser = browser || newBrowser;
   // Get credentials
   console.log('Checking logged in status...');
-  if (!await checkIfLoggedIn()) 
-    await logInUser().catch(() => page = null);
-  if(username) {
-    console.log(`User logged-in as: ${username}`);
-    await setOwnedAccount(username);
+  try {
+    if (!await checkIfLoggedIn()) 
+      await logInUser().catch(() => page = null);
+    if(username) {
+      console.log(`User logged-in as: ${username}`);
+      await setOwnedAccount(username);
+    }
+    if (page && !page.isClosed()) await page.close();
+  } finally {
+    page = null;
+    loginLock = false;
   }
-  page?.close();
-  page = null;
 }

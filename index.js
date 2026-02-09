@@ -71,7 +71,7 @@ async function init() {
   await db.init();
   const { page, browser } = await setupBrowser();
   // Setup user logging
-  await initUtils(page);
+  await initUtils(page, browser);
   
   // Rebrowser-puppeteer compatibility: Use CDP binding instead of exposeFunction
   const cdpSession = await page.createCDPSession();

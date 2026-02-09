@@ -1,4 +1,4 @@
-import { getPromise, stop, teardown } from './utils.js';
+import { getPromise, stop, teardown, waitFor } from './utils.js';
 import * as db from './database-interface.js';
 import { DEFAULT_BROWSER_PARAMS, BROWSER_DIR, IGNORE_DEFAULT_PARAMS, DOWNLOADED_BROWSER_DIR } from './constants.js';
 import { getChromePath, getChromiumPath } from 'browser-paths';
@@ -65,6 +65,25 @@ async function getBrowserPath() {
  */
 export async function setupBrowser() {
   const { chromePath, product } = await getBrowserPath();
+
+  // TODO: Refactor this hack, tabs were being restored and this fixes it.
+  const prefsPath = path.resolve(BROWSER_DIR + product, 'Default', 'Preferences');
+  if (fs.existsSync(prefsPath)) {
+    try {
+      const prefs = fs.readJsonSync(prefsPath);
+      if (!prefs.session) prefs.session = {};
+      prefs.session.restore_on_startup = 5;
+      prefs.session.startup_urls = [];
+      
+      if (prefs.profile) prefs.profile.exit_type = "Normal";
+      prefs.exit_type = "Normal";
+      
+      fs.writeJsonSync(prefsPath, prefs);
+    } catch (e) {
+      console.error('[Warn] Failed to patch browser preferences:', e.message);
+    }
+  }
+
   const opts = {
     headless: false,
     executablePath: chromePath,
@@ -76,7 +95,17 @@ export async function setupBrowser() {
   };
   fs.ensureDirSync(BROWSER_DIR + product);
   const browser = await puppeteer.launch(opts);
-  let page = await browser.pages().then(p => p[0]);
+  // wait for it
+  await waitFor(500);
+  let pages = await browser.pages();
+  while (pages.length > 1) {
+    const p = pages.pop();
+    if (!p.isClosed()) await p.close();
+    pages = await browser.pages();
+  }
+  let page = pages[0];
+  if (!page) page = await browser.newPage();
+  
   page.setDefaultNavigationTimeout(0);
 
   page.on('close', async () => {

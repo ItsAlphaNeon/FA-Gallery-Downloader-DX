@@ -12,6 +12,9 @@ export const DEFAULT_BROWSER_PARAMS = [
   '--disable-automation',
   '--disable-blink-features=AutomationControlled',
   '--disable-notifications', // This removes the unsupported CLI banner
+  '--disable-web-security',
+  '--disable-session-crashed-bubble',
+  '--no-default-browser-check',
   '--test-type' //  this too
 ];
 export const IGNORE_DEFAULT_PARAMS = [
@@ -28,3 +31,4 @@ export const DB_LOCATION = './fa_gallery_downloader/databases/fa-gallery-downloa
 export const RELEASE_CHECK = 'https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases';
 
 export const FA_DOWN = `[Warn] FA appears to be down, try again later`;
+export const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36';

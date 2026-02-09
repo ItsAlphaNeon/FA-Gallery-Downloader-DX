@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs-extra';
 import * as db from './database-interface.js';
 import { exitCode, default as process, platform } from 'node:process';
-import { FA_URL_BASE, RELEASE_CHECK, LOG_DIR as logDir } from './constants.js';
+import { FA_URL_BASE, RELEASE_CHECK, LOG_DIR as logDir, USER_AGENT } from './constants.js';
 /** @import { CheerioAPI } from 'cheerio' */
 
 export const isWindows = platform === 'win32';
@@ -29,6 +29,7 @@ export const stop = {
 export const __dirname = join(dirname(fileURLToPath(import.meta.url)), '../');
 // Page used to display messages to user
 let page = null;
+let browser = null;
 let version = '';
 
 export function getVersion() {
@@ -137,9 +138,25 @@ logProgress.busy = (id) => {
  * @param {String} url 
  * @returns {CheerioAPI}
  */
-export function getHTML(url, sendHeaders = true) {
-  const headers = sendHeaders ? faRequestHeaders : {};
-  headers.timeout = { response: 3000 };
+export async function getHTML(url, sendHeaders = true) {
+  // hack fix to get around cloudflare returning 403s
+  if (page && !page.isClosed()) {
+    try {
+      const html = await page.evaluate(async (url) => {
+        const response = await fetch(url);
+        return await response.text();
+      }, url);
+      console.log(`Loaded (Browser): ${url}`);
+      return cheerio.load(html);
+    } catch (e) {
+      console.log(`[Warn] Browser fetch failed for: ${url}, falling back to got.`);
+    }
+  }
+
+  const headers = sendHeaders ? { ...faRequestHeaders } : {};
+  if (!headers.headers) headers.headers = {};
+  headers.headers['user-agent'] = USER_AGENT;
+  
   return got(url, {
     ...headers, ...{
       timeout: { response: 3000 },
@@ -171,7 +188,28 @@ export async function releaseCheck() {
   return data;
 }
 export async function urlExists(url, sendHeaders = true) {
-  let headers = sendHeaders ? faRequestHeaders : {};
+  // Try to use the browser to fetch if available
+  if (page && !page.isClosed()) {
+    try {
+      const status = await page.evaluate(async (url) => {
+        try {
+          const res = await fetch(url, { method: 'HEAD' });
+          return res.status;
+        } catch (e) {
+          return 0; // Network error
+        }
+      }, url);
+      console.log(`[DEBUG] Browser HEAD ${url} returned status: ${status}`);
+      if (status > 0) return true;
+    } catch (e) {
+      console.log(`[Warn] Browser urlExists failed for: ${url}, falling back to got.`);
+    }
+  }
+
+  let headers = sendHeaders ? { ...faRequestHeaders } : {};
+  if (!headers.headers) headers.headers = {};
+  headers.headers['user-agent'] = USER_AGENT;
+
   headers = {
     ...headers,
     method: 'HEAD',
@@ -180,13 +218,29 @@ export async function urlExists(url, sendHeaders = true) {
       limit: maxRetries,
     },
   };
-  return got(url, headers).then(() => true).catch(() => false);
+  return got(url, headers).then(() => true).catch((e) => {
+    if (e.response && (e.response.statusCode === 403 || e.response.statusCode === 503)) {
+      console.log(`[DEBUG] got returned ${e.response.statusCode}, assuming site is up (Cloudflare/Protection)`);
+      return true;
+    }
+    console.log(`[DEBUG] got failed: ${e.message}`);
+    return false;
+  });
 }
 
 export async function isSiteActive() {
-  const isSiteUp = urlExists(FA_URL_BASE);
+  console.log(`[DEBUG] Checking if FA is up...`);
+  const isSiteUp = await urlExists(FA_URL_BASE);
+  console.log(`[DEBUG] FA is ${isSiteUp ? 'up' : 'down'}`);
   const title = await getHTML(FA_URL_BASE).then($ => $('title').text()).catch(() => '');
-  const isMaintenance = !title || /fa.is.temporarily.offline/i.test(title);
+  console.log(`[DEBUG] Page Title: "${title}"`);
+  
+  // Cloudflare "Just a moment..." should NOT be considered maintenance
+  const isMaintenance = /fa.is.temporarily.offline/i.test(title);
+  
+  if (isMaintenance) console.log(`[DEBUG] FA Maintenance detected`);
+  if (!isSiteUp) console.log(`[DEBUG] FA Site unreachable`);
+  
   return isSiteUp && !isMaintenance;
 }
 export async function sendStartupInfo(data = {}) {
@@ -203,8 +257,9 @@ export async function setActive(val = true) {
  * Binds the given Page object for future log messages.
  * @param {Puppeteer.Page} newPage 
  */
-export async function init(newPage) {
+export async function init(newPage, newBrowser) {
   page = newPage;
+  browser = newBrowser;
   if (isWindows) {
     await import('node-hide-console-window')
       .then((hc) => { hc.hideConsole(); })
