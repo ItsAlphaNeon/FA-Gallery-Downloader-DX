@@ -1,5 +1,12 @@
 # 🐾 FA Gallery Downloader DX 🐾
 
+---
+
+### ⚠️ Notice ⚠️
+**Furaffinity has been adding more and more layers of Clouflare turnstile protection. Unfortunately, there are no easy methods of getting around their puppeted browser detections easily, which makes this project useless unless someone can find a workaround. If you know of one that can be implemented in an open source fashion, please make a pull request. This project does not currently function due to this.**
+
+---
+
 ### Dead simple gallery download for FurAffinity
 ### Originally created by SpottedSqueak.
 
