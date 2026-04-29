@@ -1,55 +1,61 @@
 # 🐾 FA Gallery Downloader DX 🐾
 
+> **⚠️ Notice**
+>
+> FurAffinity has implemented aggressive Cloudflare Turnstile protection that hinders our scraping method. This project may not function reliably until a workaround is found. If you have a solution that can be implemented in an open-source manner, please submit a pull request.
+
 ---
 
-### ⚠️ Notice ⚠️
-**Furaffinity has been adding more and more layers of Clouflare turnstile protection. Unfortunately, there are no easy methods of getting around their puppeted browser detections easily, which makes this project useless unless someone can find a workaround. If you know of one that can be implemented in an open source fashion, please make a pull request. While the current release works as of 4/29/26, this project may stop working at any time, until a workaround is found.**
+**A streamlined gallery downloader for FurAffinity.**
+
+Originally created by **SpottedSqueak**.
+
+*Thank you for your contributions to the furry fandom. Rest in peace.* 🐁🌼
 
 ---
 
-### Dead simple gallery download for FurAffinity
-### Originally created by SpottedSqueak.
+## [Download Latest Release](https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases)
 
-*Thank you SpottedSqueak for your contributions to the furry fandom.
-Rest in peace* 🐁🌼
+---
+
+## Features
+
+- Login with your FA account and download any user's gallery
+- Tracks progress and supports pause/resume
+- Stores submission metadata in a local SQLite database
+- Includes a built-in gallery viewer that mirrors the FA interface
+- Resumes downloads if the application is closed or crashes
+
+## Requirements
+
+A valid, up-to-date **Chromium or Chrome installation** is required. If one isn't detected, the program will automatically download the latest Chromium build.
+
+> **Why a browser?** Many users restrict gallery visibility to logged-in visitors. Chromium integration ensures consistent access—similar to how [Postybirb](https://www.postybirb.com/) handles authentication.
+
+## Usage
+
+1. Launch the application and log in
+2. Enter a FurAffinity username
+3. Select your download options and start
+
+Downloaded content is saved to `./fa_gallery_downloader/downloaded_content`, with all metadata stored in the accompanying SQLite database (viewable with tools like [DB Browser](https://sqlitebrowser.org/)).
+
+## Development
+
+```bash
+npm install      # Install dependencies
+npm run start    # Run in development mode
+npm run build    # Build for production
+```
+
+Building requires [@radically-straightforward/package](https://github.com/radically-straightforward/radically-straightforward/tree/main/package). Note that the build process copies all files in the working directory—consider isolating source files before packaging.
+
+## How It Works
+
+The downloader walks through the target gallery (main gallery, then scraps), collecting submission links. It then retrieves metadata and queues staggered downloads to avoid rate limiting. Large galleries may take 30+ minutes to fully process.
+
+---
 
 ## Contributing
-Contributions to maintaining this are accepted, please make a pull request if you would like to contribute.
 
----
-### [> Download Latest Release <](https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases)
----
-## Dev Info
-
-Install: `npm i`
-
-Run: `npm run start`
-
-Build: `npm run build`
-
-Database is `sqlite` and can be read with something like [DB Browser](https://sqlitebrowser.org/)
-
-## Info
-
-You login, type in an FA username, pick your options, and go. It will display download progress, and any messages associated with the download. You can stop and resume later at any point. 
-
-The gallery information is saved in the containing folder under `fa_gallery_downloader`, with all content saved in `/fa_gallery_downloader/downloaded_content` folder, placed in the same folder as the executable. The database has all of the related submission metadata.
-
-You can browse via the file system, or the *slick built-in replica-FA gallery viewer.* It's up to you!
-
-***NOTE:*** You'll need a **valid, up-to-date Chromium/Chrome install** for this to work. If you do not have one, the program will download the latest Chromium build for you, much like [Electron](https://www.electronjs.org/) does. I don't download it by default to save bandwidth and time (and most folks have some version of it installed already).
-
-***Why is a browser needed?*** A lot of users have their galleries hidden from site visitors, so this is the easiest way to consistently ensure access to galleries. This is done almost the exact same way [Postybirb](https://www.postybirb.com/) does it! Futhermore, the login is used to determine if the gallery you're downloading is one that you own, for future uploading to other sites via Postybirb importing.
-
-You'll need [@radically-straightforward/package](https://github.com/radically-straightforward/radically-straightforward/tree/main/package) to build the application bundle for your OS. The resulting zip/gzip file will be a sibling of the extracted folder. Note that it will copy ALL files in the current directory, so you might want to copy only the files needed (no `.git` files or the entire `fa_gallery_downloader` folder) and run the build command in that folder instead. Or just download the latest Release, whatever's easiest.
-
-
-## How it works
-
-Start the program, login, choose a gallery and go. It will then walk through the gallery, first the main gallery and then scraps, collecting all of the submission links present. Once complete, it will start visiting and collecting metadata (title, description, tags, etc.) for each submission, as well as queuing staggered downloads of the content for each submission. I do this to prevent being blocked on FA's site.
-
-The downloaded submissions can be found in the `/fa_gallery_downloader/downloaded_content` folder, placed in the same folder as the executable.
-
-It supports resuming, as it can take upwards of half an hour to fully download large galleries (possibly more).
-
-I hope it helps, it's always a good idea to not put all your eggs in one basket.
+Contributions are welcome. Please submit a pull request if you'd like to help maintain or improve this project.
