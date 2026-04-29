@@ -113,10 +113,6 @@ export default {
       const { name, scrapeGallery, scrapeComments, scrapeFavorites } = this;
       this.$emit('sendData',  { name, scrapeGallery, scrapeComments, scrapeFavorites });
     },
-    exportData(name, i) {
-      const includeDate = this.$refs['export-date_' + i][0].checked;
-      this.$emit('sendEvent', { choice: 'export-data', name, includeDate });
-    },
     deleteAccount(name) {
       if (window.confirm(`Remove account: [${name}]? \nNOTE: You'll need to login again to access it.`)) {
         this.$emit('sendEvent', { choice: 'delete-account', name });

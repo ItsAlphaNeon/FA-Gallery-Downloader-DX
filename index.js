@@ -9,7 +9,6 @@ import { join, resolve } from 'node:path';
 import open from 'open';
 import fs from 'fs-extra';
 import { setupBrowser } from './js/setup-browsers.js';
-import { init as exportData } from './js/export-data.js';
 import { spawn } from 'node:child_process';
 import {  default as process } from 'node:process';
 
@@ -125,10 +124,6 @@ async function init() {
         setActive(false);
         console.log(`[Data] Database OK!`);
       }
-    } else if (choice === 'export-data') {
-      setActive(true);
-      await exportData(data.name, data.includeDate);
-      setActive(false);
     } else if (choice === 'release-check') {
       sendStartupInfo(await releaseCheck());
     } else if (choice === 'delete-account') {
