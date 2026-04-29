@@ -3,7 +3,7 @@
 ---
 
 ### ⚠️ Notice ⚠️
-**Furaffinity has been adding more and more layers of Clouflare turnstile protection. Unfortunately, there are no easy methods of getting around their puppeted browser detections easily, which makes this project useless unless someone can find a workaround. If you know of one that can be implemented in an open source fashion, please make a pull request. This project does not currently function due to this.**
+**Furaffinity has been adding more and more layers of Clouflare turnstile protection. Unfortunately, there are no easy methods of getting around their puppeted browser detections easily, which makes this project useless unless someone can find a workaround. If you know of one that can be implemented in an open source fashion, please make a pull request. This project may stop working at any time, until a workaround is found.**
 
 ---
 
@@ -53,22 +53,3 @@ The downloaded submissions can be found in the `/fa_gallery_downloader/downloade
 It supports resuming, as it can take upwards of half an hour to fully download large galleries (possibly more).
 
 I hope it helps, it's always a good idea to not put all your eggs in one basket.
-
-## Exporting to Postybirb
-
-First off, you'll need to log in to an FA account to be able to export it! Once you do, you can simply click the `Export` button next to the username on the startup menu, and all currently downloaded/saved submissions will be exported to a folder with the following structure, where each folder represents 50 submissions:
-```
-.
-└── fa_gallery_downloader/
-    └── exports/
-        └── [account name]/
-            ├── 0
-            ├── 1
-            ├── 2
-            ├── 3
-            ├── 4
-            └── (etc...)
-```
-You'll need to import *each numbered directory* into Postybirb; Postybirb's directory importer had issues with handling more than 50 submissions at a time, hence this system.
-
-***NOTE:*** If you do not want to include the **"originally posted on"** date in the imported description in Postybirb, make sure to uncheck that option below the `Export` button.

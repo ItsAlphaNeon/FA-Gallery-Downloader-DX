@@ -21,6 +21,7 @@ function constructJSON(d, includeDate = true) {
   });
 }
 async function exportData(name, includeDate) {
+  // TODO: Deprecate this entire function, as we are removing exporting to Postybirb in the near future.
   name = name.toLowerCase();
   const dirPath = join(EXPORT_DIR, name);
   const inNeedOfRepair = await db.needsRepair(name);

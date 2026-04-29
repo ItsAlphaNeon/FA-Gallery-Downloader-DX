@@ -41,9 +41,7 @@ export default {
           <template v-for="(name, i) in accounts">
             <li>
               <span>{{name}}</span>
-              <button @click.prevent="exportData(name, i)" alt="Export to Postybirb" title="Export to Postybirb">Export: Postybirb</button>
               <button @click.prevent="deleteAccount(name)" alt="Delete account name" title="Delete account name">❌</button>
-              <div class="export-info"><input :id="'export-date_' + i" :ref="'export-date_' + i" type="checkbox" checked /><label :for="'export-date_' + i" >Include original post dates for submissions</label></div>
             </li>
           </template>
         </ul>
