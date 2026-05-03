@@ -1,6 +1,6 @@
 # 🐾 FA Gallery Downloader DX 🐾
 
-> **⚠️ Notice**
+> [!WARNING]
 >
 > FurAffinity has implemented aggressive Cloudflare Turnstile protection that hinders our scraping method. This project may not function reliably until a workaround is found. If you have a solution that can be implemented in an open-source manner, please submit a pull request.
 
