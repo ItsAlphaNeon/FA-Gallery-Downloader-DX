@@ -40,6 +40,17 @@ A valid, up-to-date **Chromium or Chrome installation** is required. If one isn'
 
 Downloaded content is saved to `./fa_gallery_downloader/downloaded_content`, with all metadata stored in the accompanying SQLite database (viewable with tools like [DB Browser](https://sqlitebrowser.org/)).
 
+## Updating
+
+Updates are currently manual.
+
+1. Download the latest version from the [Releases](https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases) page.
+2. Extract and copy the release files into your install directory, replacing existing files.
+3. Launch the application from the executable in the install directory.
+
+> [!WARNING]
+> Before updating, back up your `downloaded_content` folder and SQLite database file to avoid data loss.
+
 ## Development
 
 ```bash
