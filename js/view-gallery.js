@@ -19,10 +19,21 @@ async function sendData() {
   };
   await page.evaluate(`window.setPageInfo?.(${JSON.stringify(data)})`);
 }
-export async function initGallery(browser) {
+export async function initGallery(browser, startupLink) {
   if (page) return;
   page = await browser.newPage();
   await page.bringToFront();
+  // trifecta of hacks to prevent tabs from reopening.
+  // TODO: Figure out a lower level solution to this x3
+  await Promise.all((await browser.pages()).map(async p => {
+    if (p !== page) {
+      const pageUrl = p.url();
+      if (!pageUrl.includes('startup.html')) {
+        await p.close();
+      }
+    }
+  }));
+  
   page.on('close', () => page = null);
   
   // Rebrowser-puppeteer compatibility: use CDP bindings instead of exposeFunction

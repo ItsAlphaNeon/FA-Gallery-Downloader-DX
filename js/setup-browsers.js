@@ -65,6 +65,7 @@ async function getBrowserPath() {
  */
 export async function setupBrowser() {
   const { chromePath, product } = await getBrowserPath();
+  let isShuttingDown = false;
   const opts = {
     headless: false,
     executablePath: chromePath,
@@ -80,10 +81,15 @@ export async function setupBrowser() {
   page.setDefaultNavigationTimeout(0);
 
   page.on('close', async () => {
+    if (isShuttingDown) return;
+    const remainingPages = await browser.pages().catch(() => []);
+    if (remainingPages.length) return;
+
+    isShuttingDown = true;
     stop.now = true;
     await teardown();
     await db.close();
-    browser?.close();
+    await browser?.close().catch(() => null);
     console.log('Program closed!');
   });
   // Display startup page

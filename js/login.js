@@ -22,6 +22,17 @@ export async function checkForOldTheme(page) {
     console.log(`[Warn] Using incompatible old FA theme, prompting user to update settings`);
     page = await browser.newPage();
     page.setDefaultNavigationTimeout(0);
+    // bit of a hack to prevent past tabs from reopening
+    // TODO: Figure out a lower level solution to this
+    await Promise.all((await browser.pages()).map(async p => {
+      if (p !== page) {
+        const pageUrl = p.url();
+        // preserve the startup page
+        if (!pageUrl.includes('startup.html')) {
+          await p.close();
+        }
+      }
+    }));
     let resolver = () => {};
     page.once('close', () => {
       resolver();
@@ -84,6 +95,16 @@ export async function checkIfLoggedIn(newBrowser) {
 async function logInUser() {
   page = page || await browser.newPage();
   page.setDefaultNavigationTimeout(0);
+  // copy of the hack we did earlier to prevent past tabs from reopening, but now for the login page
+  // TODO: Figure out a lower level solution to this x2
+  await Promise.all((await browser.pages()).map(async p => {
+    if (p !== page) {
+      const pageUrl = p.url();
+      if (!pageUrl.includes('startup.html')) {
+        await p.close();
+      }
+    }
+  }));
   console.log('Not logged in! Requesting user to do so...');
   await page.goto(FA_LOGIN);
   let resolver = () => {};

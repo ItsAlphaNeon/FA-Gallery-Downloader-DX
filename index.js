@@ -97,7 +97,7 @@ async function init() {
       await sendStartupInfo();
     } else if (choice === 'view-gallery') {
       console.log(`[Data] Opening gallery viewer...`);
-      initGallery(browser);
+      await initGallery(browser, startupLink);
     } else if (choice === 'stop-all') {
       stop.now = true;
       console.log('Stopping data scraping...');
