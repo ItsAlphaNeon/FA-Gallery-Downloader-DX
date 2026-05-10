@@ -4,16 +4,16 @@ export default {
   <div class="user-input-container">
     <form class="user-input" @submit.prevent="sendData">
       <p class="user-input__gallery-options">
-        <label for="username">Galleries to download:</label>
+        <label for="username">{{galleryOptionsLabel}}</label>
         <input type="text" id="username" v-model.trim="username" placeholder="username1, username2, etc..." />
         <button id="start-download">{{downloadText}}</button>
       </p>
-      <div class="user-input__scrape-options">
-        <input type="checkbox" id="scrape-gallery" v-model="scrapeGallery" />
+      <div class="user-input__scrape-options" :class="{ 'scrape-options--disabled': isSubmissionUrl }">
+        <input type="checkbox" id="scrape-gallery" v-model="scrapeGallery" :disabled="isSubmissionUrl" />
         <label for="scrape-gallery">Gallery</label>
-        <input type="checkbox" id="scrape-comments" v-model="scrapeComments" />
+        <input type="checkbox" id="scrape-comments" v-model="scrapeComments" :disabled="isSubmissionUrl" />
         <label for="scrape-comments">Comments</label>
-        <input type="checkbox" id="scrape-favorites" v-model="scrapeFavorites" />
+        <input type="checkbox" id="scrape-favorites" v-model="scrapeFavorites" :disabled="isSubmissionUrl" />
         <label for="scrape-favorites">Favorites</label>
         <div class="warning">(WARNING: This can be a HUGE amount!!)</div>
       </div>
@@ -80,6 +80,12 @@ export default {
     },
   },
   computed: {
+    isSubmissionUrl() {
+      return /^https?:\/\/(?:www\.)?furaffinity\.net\/view\/\d+\/?$/i.test(this.username);
+    },
+    galleryOptionsLabel() {
+      return this.isSubmissionUrl ? 'Submission to download:' : 'Galleries to download:';
+    },
     name() {
       return this.username.toLowerCase().trim().replace(/_/gi, '');
     },
@@ -87,6 +93,7 @@ export default {
       return this.isLoggedIn ? 'Switch Accounts': 'Login';
     },
     downloadText() {
+      if (this.isSubmissionUrl) return 'Download Submission';
       return (this.username) ? 'Download User Galleries' : 'Continue Previous Download';
     },
     computedDownloadAccounts() {
@@ -110,8 +117,13 @@ export default {
     },
     sendData() {
       // this.notActive = false;
-      const { name, scrapeGallery, scrapeComments, scrapeFavorites } = this;
-      this.$emit('sendData',  { name, scrapeGallery, scrapeComments, scrapeFavorites });
+      if (this.isSubmissionUrl) {
+        const submissionUrl = this.username.trim();
+        this.$emit('sendData', { submissionUrl });
+      } else {
+        const { name, scrapeGallery, scrapeComments, scrapeFavorites } = this;
+        this.$emit('sendData',  { name, scrapeGallery, scrapeComments, scrapeFavorites });
+      }
     },
     deleteAccount(name) {
       if (window.confirm(`Remove account: [${name}]? \nNOTE: You'll need to login again to access it.`)) {
