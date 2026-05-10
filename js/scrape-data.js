@@ -155,43 +155,7 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
       }
     }
     retryCount = 0;
-    // Get data if page exists
-    let date = $('.submission-id-sub-container .popup_date').attr('title').trim();
-    if (/ago$/i.test(date)) date = $('.submission-id-sub-container .popup_date').text().trim();
-    // Updated selector to match the raw HTML structure
-    let prettyUsername = $('.section-header .c-usernameBlockSimple__displayName')
-      .first()
-      .text()
-      .trim();
-    // Fix for username weirdness sometimes
-    // TODO: Fix this, as it is a hacky solution to a problem that should not exist
-    // if (prettyUsername.toString().endsWith("'s")) {
-    //   prettyUsername = prettyUsername.toString().slice(0, -2);
-    // } else if (prettyUsername.toString().endsWith("'")) {
-    //   prettyUsername = prettyUsername.toString().slice(0, -1);
-    // }
-    // https://www.furaffinity.net/user/felisrandomis/
-    let username = $('.section-header .c-usernameBlockSimple__displayName')
-      .attr('title').trim();
-    const data = {
-      id: links[index].url.split('view/')[1].split('/')[0],
-      title: $('.submission-title').text().trim(),
-      username,
-      account_name: username.replace(/_/gi, ''),
-      pretty_username: prettyUsername,
-      desc: $('.submission-description').html().trim(),
-      tags: $('.tags-row').text().match(/([A-Z])\w+/gmi)?.join(','),
-      content_name: $('.download > a').attr('href').split('/').pop(),
-      content_url: $('.download > a').attr('href'),
-      date_uploaded: date,
-      thumbnail_url: $('.page-content-type-text, .page-content-type-music').find('#submissionImg').attr('src') || '',
-      rating: $('.rating .rating-box').first().text().trim(),
-      category: $('.info.text > div > div').text().trim(),
-    };
-    // Test to fix FA url weirdness
-    if (!/^https/i.test(data.content_url)) data.content_url = 'https:' + data.content_url;
-    if (data.thumbnail_url && !/^https/i.test(data.thumbnail_url))
-      data.thumbnail_url = 'https:' + data.thumbnail_url;
+    const data = processSubmissionHTML($, links[index].url);
     // Save data to db
     await db.saveMetaData(links[index].url, data);
     // Save comments 
@@ -201,4 +165,112 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
   }
   if (!stop.now) console.log('[Data] All submission metadata saved!');
   logProgress.reset(progressID);
+}
+/**
+ * Processes the HTML of a submission page to process all data fields. Returns an object with all relevant data.
+ * @param {Cheerio} $
+ * @returns {Object} An object containing all relevant data from the submission page.
+ */
+export function processSubmissionHTML($, url) { // Seperated from scrapeSubmissionInfo for better readability and workability (FA keeps changing UI all the time now)
+  let date = '';
+  try {
+    date = $('.popup_date').attr('title').trim();
+    if (/ago$/i.test(date)) date = $('.popup_date').text().trim();
+  } catch (e) {
+    console.log('[Warn] Could not parse date, FA UI may have changed');
+  }
+
+  let prettyUsername = '';
+  try {
+    prettyUsername = $('.c-usernameBlockSimple__displayName').first().text().trim();
+  } catch (e) {
+    console.log('[Warn] Could not parse display name, FA UI may have changed');
+  }
+
+  let username = '';
+  try {
+    username = $('.c-usernameBlockSimple a').first().attr('href')?.split('/user/')[1]?.replace(/\/$/, '') ?? '';
+  } catch (e) {
+    console.log('[Warn] Could not parse username, FA UI may have changed');
+  }
+
+  let tags = '';
+  try {
+    tags = Array.from($('.submission-tags a[data-tag-name]'))
+      .map((el) => $(el).attr('data-tag-name')).filter(Boolean).join(',');
+  } catch (e) {
+    console.log('[Warn] Could not parse tags, FA UI may have changed');
+  }
+
+  let title = '';
+  try {
+    title = $('.submission-title').text().trim();
+  } catch (e) {
+    console.log('[Warn] Could not parse title, FA UI may have changed');
+  }
+
+  let desc = '';
+  try {
+    desc = $('.submission-description-text').html()?.trim() ?? '';
+  } catch (e) {
+    console.log('[Warn] Could not parse description, FA UI may have changed');
+  }
+
+  let content_url = '';
+  try {
+    content_url = $('#submission-options a[href*="d.furaffinity.net"]').attr('href') ?? '';
+    if (content_url && !/^https/i.test(content_url)) content_url = 'https:' + content_url;
+  } catch (e) {
+    console.log('[Warn] Could not parse content URL, FA UI may have changed');
+  }
+
+  let content_name = '';
+  try {
+    content_name = content_url.split('/').pop() ?? '';
+  } catch (e) {
+    console.log('[Warn] Could not parse content name');
+  }
+
+  let thumbnail_url = '';
+  try {
+    thumbnail_url = $('.page-content-type-text, .page-content-type-music').find('#submissionImg').attr('src') || '';
+    if (thumbnail_url && !/^https/i.test(thumbnail_url)) thumbnail_url = 'https:' + thumbnail_url;
+  } catch (e) {
+    console.log('[Warn] Could not parse thumbnail URL, FA UI may have changed');
+  }
+
+  let rating = '';
+  try {
+    const ratingBlock = $('.submission-page-stats .highlight')
+      .filter((_, el) => $(el).text().trim().toLowerCase() === 'rating')
+      .first()
+      .parent();
+
+    rating = ratingBlock.find('div').first().text().trim();
+  } catch (e) {
+    console.log('[Warn] Could not parse rating, FA UI may have changed');
+  }
+
+  let category = '';
+  try {
+    category = $('.submission-content-stats > span:not(.highlight) > span:first-child').text().trim();
+  } catch (e) {
+    console.log('[Warn] Could not parse category, FA UI may have changed');
+  }
+
+  return {
+    id: url.split('view/')[1].split('/')[0],
+    title,
+    username,
+    account_name: username.replace(/_/gi, ''),
+    pretty_username: prettyUsername,
+    desc,
+    tags,
+    content_name,
+    content_url,
+    date_uploaded: date,
+    thumbnail_url,
+    rating,
+    category,
+  };
 }
