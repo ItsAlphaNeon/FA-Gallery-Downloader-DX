@@ -119,8 +119,15 @@ export async function initGallery(browser, startupLink) {
     const text = msg.text();
     if(/you are running/i.test(text)) return;
     if (msg.type() === 'error'){
-      let errorLoc = Object.values(msg.location()).toString().split('fa_gallery_downloader').pop();
-      console.error(`[Gallery] ${text}:\n.../fa_gallery_downloader${errorLoc}`);
+      const locStr = Object.values(msg.location()).toString();
+      // prevents log spam for 404s on missing avatars
+      if (/404/i.test(text) && /a\.furaffinity\.net\/.*\.gif/i.test(locStr)) return;
+      // fix the incorrect path in the error TODO: investigate further what's causing this
+      const parts = locStr.split('fa_gallery_downloader');
+      const errorLoc = parts.length > 1
+        ? `.../fa_gallery_downloader${parts.pop()}`
+        : locStr;
+      console.error(`[Gallery] ${text}:\n${errorLoc}`);
     } else console.log(`[Gallery] ${text}`)
   });
 }
