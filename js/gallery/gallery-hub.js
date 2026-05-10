@@ -23,12 +23,20 @@ export default {
           <button class="gallery-next" :disabled="!results.length || results.length < count" @click="next">Next</button>
         </div>
         <div class="gallery-results-container">
-          <div class="sort-order-container">
-            <label for="sort-order">Sort: </label>
-            <select id="sort-order" v-model="sortOrder" @change="getResults">
-              <option value="DESC">Newest to oldest</option>
-              <option value="ASC">Oldest to newest</option>
-            </select>
+          <div class="gallery-filters-bar">
+            <div class="rating-filter-container">
+              <label>Rating:</label>
+              <label><input type="checkbox" v-model="ratingFilter.general" @change="getResults"> General</label>
+              <label><input type="checkbox" v-model="ratingFilter.mature" @change="getResults"> Mature</label>
+              <label><input type="checkbox" v-model="ratingFilter.adult" @change="getResults"> Adult</label>
+            </div>
+            <div class="sort-order-container">
+              <label for="sort-order">Sort: </label>
+              <select id="sort-order" v-model="sortOrder" @change="getResults">
+                <option value="DESC">Newest to oldest</option>
+                <option value="ASC">Oldest to newest</option>
+              </select>
+            </div>
           </div>
           <template v-for="result in results" :key="result.content_name">
             <gallery-tile @load-submission="loadSubmission" v-bind="result" @search-user="searchUser"></gallery-tile>
@@ -55,6 +63,7 @@ export default {
       query: {},
       outsideUsername: '',
       sortOrder: 'DESC',
+      ratingFilter: { general: true, mature: true, adult: true },
       favUsernames: [],
       usernames: [],
     };
@@ -101,6 +110,7 @@ export default {
         count: this.count,
         query: this.query,
         sortOrder: this.sortOrder,
+        ratingFilter: this.ratingFilter,
       };
       return window.getGalleryPage(payload)
         .then(results => {

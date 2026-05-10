@@ -47,7 +47,7 @@ export async function initGallery(browser, startupLink) {
     let result;
     
     if (name === '__getGalleryPageBinding') {
-      result = await db.getGalleryPage(data.offset, data.count, data.query, data.sortOrder);
+      result = await db.getGalleryPage(data.offset, data.count, data.query, data.sortOrder, data.ratingFilter);
     } else if (name === '__getSubmissionPageBinding') {
       result = await db.getSubmissionPage(data);
     } else if (name === '__downloadCommentsBinding') {

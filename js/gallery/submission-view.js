@@ -52,7 +52,7 @@ export default {
             </div>
             <div class="submission-info__title">{{submission.title}}</div>
             <div class="submission-info__user">
-              <span>By {{submission.username}} | </span>
+              <span>By {{submission.pretty_username}} | </span>
               <b :title="dateUploaded" :alt="dateUploaded">Uploaded: {{relativeDate}}</b>
             </div>
           </div>
