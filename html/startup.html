@@ -8,8 +8,10 @@
   <link href="./resources/fonts.googleapis.com_css_family=Open+Sans_400,600,300.css" rel="stylesheet" type="text/css">
   <link rel="icon" type="image/x-icon" href="./resources/favicon.ico">
   <link rel="stylesheet" href="./resources/startup-styles.css">
-  <script> // Enforce minimum window size because the layout breaks at smaller sizes
+  <script> // Enforce minimum window size because the layout breaks at smaller sizes (not needed on macOS)
     (function () {
+      const isMac = /Mac/.test(navigator.platform) || /Mac/.test(navigator.userAgent);
+      if (isMac) return;
       const MIN_WIDTH = 1280;
       const MIN_HEIGHT = 720;
       function enforceMinSize() {
