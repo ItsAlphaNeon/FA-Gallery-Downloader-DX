@@ -25,6 +25,7 @@ Originally created by **SpottedSqueak**.
 - Stores submission metadata in a local SQLite database
 - Includes a built-in gallery viewer that mirrors the FA interface
 - Resumes downloads if the application is closed or crashes
+- Allows for single submission downloads by pasting the URL into the field
 
 ## Requirements
 
