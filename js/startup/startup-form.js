@@ -119,6 +119,7 @@ export default {
       // this.notActive = false;
       if (this.isSubmissionUrl) {
         const submissionUrl = this.username.trim();
+        this.username = '';
         this.$emit('sendData', { submissionUrl });
       } else {
         const { name, scrapeGallery, scrapeComments, scrapeFavorites } = this;
