@@ -14,7 +14,7 @@ jobs:
   insiders-build:
     strategy:
       matrix:
-        os: [windows, ubuntu]
+        os: [windows, ubuntu, macos]
         include:
           - os: windows
             build: |
@@ -24,8 +24,13 @@ jobs:
           - os: ubuntu
             build: |
               npx package
-              mv ../FA-Gallery-Downloader-DX.tar.gz ./fa-gallery-downloader-dx-${{github.ref_name}}.tar.gz
-            artifact: fa-gallery-downloader-dx-${{github.ref_name}}.tar.gz
+              mv ../FA-Gallery-Downloader-DX.tar.gz ./fa-gallery-downloader-dx-${{github.ref_name}}-linux.tar.gz
+            artifact: fa-gallery-downloader-dx-${{github.ref_name}}-linux.tar.gz
+          - os: macos
+            build: |
+              npx package
+              mv ../FA-Gallery-Downloader-DX.tar.gz ./fa-gallery-downloader-dx-${{github.ref_name}}-macos.tar.gz
+            artifact: fa-gallery-downloader-dx-${{github.ref_name}}-macos.tar.gz
     runs-on: ${{matrix.os}}-latest
     steps:
       - uses: actions/checkout@main
