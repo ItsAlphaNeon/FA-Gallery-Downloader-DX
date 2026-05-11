@@ -205,11 +205,24 @@ export function deleteOwnedAccount(username) {
 }
 
 // SELECT/GET functions
-export function getGalleryPage(offset = 0, count = 25, query = {}, sortOrder ='DESC') {
+export function getGalleryPage(offset = 0, count = 25, query = {}, sortOrder ='DESC', ratingFilter = { general: true, mature: true, adult: true }) {
   let { username, searchTerm, galleryType } = query;
   let searchQuery = '';
   let galleryQuery = '';
   let usernameQuery = '';
+  let ratingQuery = '';
+
+  const allowedRatings = [];
+  if (ratingFilter.general) allowedRatings.push("'General'");
+  if (ratingFilter.mature) allowedRatings.push("'Mature'");
+  if (ratingFilter.adult) allowedRatings.push("'Adult'");
+
+  if (allowedRatings.length === 0) {
+    ratingQuery = 'AND 1=0';
+  } else if (allowedRatings.length < 3) {
+    const nullClause = ratingFilter.general ? ' OR rating IS NULL' : '';
+    ratingQuery = `AND (rating IN (${allowedRatings.join(',')})${nullClause})`;
+  }
 
   if (searchTerm) {
     searchTerm = `${searchTerm.replace(/\s/gi, '%')}`;
@@ -261,6 +274,7 @@ export function getGalleryPage(offset = 0, count = 25, query = {}, sortOrder ='D
   ${searchQuery}
   ${usernameQuery}
   ${galleryQuery}
+  ${ratingQuery}
   ORDER BY content_name ${sortOrder}
   LIMIT ${count} OFFSET ${offset}
   `;

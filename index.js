@@ -15,6 +15,27 @@ import {  default as process } from 'node:process';
 const startupLink = `file://${resolve(__dirname, './html/startup.html')}`;
 
 let inProgress = false;
+// handles single submission downloads, useful for not downloading an entire gallery
+async function startSubmissionDownload(url) { 
+  if (inProgress) return console.log('[Data] Program already running!');
+  inProgress = true;
+  const submissionUrl = url.endsWith('/') ? url : url + '/';
+  console.log(`[Data] Downloading single submission: ${submissionUrl}`);
+  await db.saveLinks([submissionUrl]).catch((e) => {
+    if (!e?.message?.includes('UNIQUE constraint failed')) throw e;
+    console.log('[Data] Submission already in database, re-downloading...');
+  });
+  Promise.all([
+    scrapeSubmissionInfo({ data: [{ url: submissionUrl }], downloadComments: true }),
+    initDownloads(),
+  ]).then(() => {
+    if (!stop.now) console.log('Submission download complete! ♥');
+  }).finally(() => {
+    inProgress = false;
+    setActive(false);
+  });
+}
+
 async function startDataScraping(uName = username, scrapeGallery = true, scrapeComments = true, scrapeFavorites) {
   if (inProgress) return console.log('[Data] Program already running!');
   if (uName) {
@@ -91,8 +112,12 @@ async function init() {
       if (!await isSiteActive()) return console.log(FA_DOWN);
       if (!await checkIfLoggedIn(browser)) await handleLogin();
       await checkForOldTheme();
-      const { name, scrapeGallery, scrapeComments, scrapeFavorites } = data;
-      startDataScraping(name, scrapeGallery, scrapeComments, scrapeFavorites);
+      if (data.submissionUrl) {
+        startSubmissionDownload(data.submissionUrl);
+      } else {
+        const { name, scrapeGallery, scrapeComments, scrapeFavorites } = data;
+        startDataScraping(name, scrapeGallery, scrapeComments, scrapeFavorites);
+      }
       await waitFor(3000);
       await sendStartupInfo();
     } else if (choice === 'view-gallery') {

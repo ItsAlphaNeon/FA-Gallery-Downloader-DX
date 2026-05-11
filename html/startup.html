@@ -8,6 +8,20 @@
   <link href="./resources/fonts.googleapis.com_css_family=Open+Sans_400,600,300.css" rel="stylesheet" type="text/css">
   <link rel="icon" type="image/x-icon" href="./resources/favicon.ico">
   <link rel="stylesheet" href="./resources/startup-styles.css">
+  <script> // Enforce minimum window size because the layout breaks at smaller sizes
+    (function () {
+      const MIN_WIDTH = 1280;
+      const MIN_HEIGHT = 720;
+      function enforceMinSize() {
+        const w = Math.max(window.outerWidth, MIN_WIDTH);
+        const h = Math.max(window.outerHeight, MIN_HEIGHT);
+        if (w !== window.outerWidth || h !== window.outerHeight) {
+          window.resizeTo(w, h);
+        }
+      }
+      window.addEventListener('resize', enforceMinSize);
+    })();
+  </script>
 </head>
 <body>
   <div id="app"></div>

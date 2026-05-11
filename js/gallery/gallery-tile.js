@@ -5,9 +5,10 @@ export default {
   template: `
     <div class="gallery-tile">
       <div class="gallery-tile__thumbnail" :class="[classRating]" @click="loadSubmission" :alt="altText" :title="altText">
+        <img v-if="isImg" class="gallery-tile__blur-bg" :src="computedImgPath" aria-hidden="true" />
         <div class="gallery-tile__thumbnail_wrapper">
           <div v-if="error" class="gallery-tile__thumbnail-other">⚠ ERROR! ⚠<br>Possible<br>corrupt file!</div>
-          <img v-else-if="isImg" :class="{'too-wide': isTooWide, 'too-small': isTooSmall }" :src="computedImgPath" @load="onImgLoad" @error="onError"/>
+          <img v-else-if="isImg" :src="computedImgPath" @load="onImgLoad" @error="onError"/>
           <div v-else-if="!is_content_saved" class="gallery-tile__thumbnail-other not-downloaded"><span>File not downloaded!<br>Type: {{fileExtension}}</span></div>
           <div v-else class="gallery-tile__thumbnail-other file-type"><span>Filetype:<br>{{fileExtension}}</span></div>
         </div>
@@ -24,8 +25,6 @@ export default {
   data() {
     return {
       contentPath: '',
-      isTooWide: false,
-      isTooSmall: false,
       altText: 'View this submission!',
       userAltText: 'Search for this user!',
       error: false,
@@ -81,14 +80,11 @@ export default {
     async onImgLoad(l) {
       this.error = false;
       const img = l.target;
-      const parent = img.parentElement;
       if (!img.clientWidth) {
         await this.waitFor();
         return this.onImgLoad({ target: img });
       }
       this.isDefaultThumbnail = img.clientWidth === 50 && img.clientHeight === 50;
-      this.isTooSmall = !this.isDefaultThumbnail && img.clientHeight <= parent.offsetHeight / 2;
-      this.isTooWide = !this.isDefaultThumbnail && img.clientWidth > parent.offsetWidth;
     },
     onError() {
       this.error = true;
