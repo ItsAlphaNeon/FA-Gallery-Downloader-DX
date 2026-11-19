@@ -14,8 +14,8 @@ Originally created by **SpottedSqueak**.
 
 ---
 
-## [Download Latest Release](https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases)
-Currently available for Windows and Linux, with experimental macOS support available [HERE](https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases/tag/v2.8.0.m)
+## [Download Latest Release](https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases/latest)
+Available for Windows and Linux, with experimental macOS builds attached to each release.
 
 ---
 

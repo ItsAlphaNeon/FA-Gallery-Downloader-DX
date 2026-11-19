@@ -1,5 +1,6 @@
 import statusDisplay from "./status-display.js";
 import startupForm from "./startup-form.js";
+import { compareVersions } from "../version.js";
 
 export default {
   name: 'startup-page',
@@ -86,17 +87,7 @@ export default {
       return this.version && this.newVersion;
     },
     hasUpdate() {
-      if (this.showVersion && this.version !== this.newVersion) {
-        const currVersion = this.version.split('.');
-        const newVersion = this.newVersion.split('.');
-        let i = 0;
-        while (i < currVersion.length) {
-          if (+newVersion[i] > +currVersion[i]) return true;
-          if (+newVersion[i] < +currVersion[i]) return false;
-          i++;
-        }
-      }
-      return false;
+      return !!this.showVersion && compareVersions(this.newVersion, this.version) > 0;
     }
   },
   methods: {
