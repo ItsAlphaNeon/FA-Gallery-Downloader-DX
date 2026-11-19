@@ -2,61 +2,67 @@ export default {
   name: 'status-form',
   template: `
   <div class="user-input-container">
-    <form class="user-input" @submit.prevent="sendData">
-      <p class="user-input__gallery-options">
+    <section class="panel">
+      <h3 class="panel__title">Download</h3>
+      <form class="user-input" @submit.prevent="sendData">
         <label for="username">{{galleryOptionsLabel}}</label>
-        <input type="text" id="username" v-model.trim="username" placeholder="username1, username2, etc..." />
-        <button id="start-download">{{downloadText}}</button>
-      </p>
-      <div class="user-input__scrape-options" :class="{ 'scrape-options--disabled': isSubmissionUrl }">
-        <input type="checkbox" id="scrape-gallery" v-model="scrapeGallery" :disabled="isSubmissionUrl" />
-        <label for="scrape-gallery">Gallery</label>
-        <input type="checkbox" id="scrape-comments" v-model="scrapeComments" :disabled="isSubmissionUrl" />
-        <label for="scrape-comments">Comments</label>
-        <input type="checkbox" id="scrape-favorites" v-model="scrapeFavorites" :disabled="isSubmissionUrl" />
-        <label for="scrape-favorites">Favorites</label>
-        <div class="warning">(WARNING: This can be a HUGE amount!!)</div>
+        <div class="user-input__gallery-options">
+          <input type="text" id="username" v-model.trim="username" placeholder="Usernames or a submission link" autocomplete="off" />
+          <button id="start-download" class="primary">{{downloadText}}</button>
+        </div>
+        <p class="hint">{{inputHint}}</p>
+        <fieldset class="user-input__scrape-options" :disabled="isSubmissionUrl" :class="{ 'scrape-options--disabled': isSubmissionUrl }">
+          <legend>Include</legend>
+          <label class="chip"><input type="checkbox" id="scrape-gallery" v-model="scrapeGallery" /> Gallery &amp; scraps</label>
+          <label class="chip"><input type="checkbox" id="scrape-comments" v-model="scrapeComments" /> Comments</label>
+          <label class="chip"><input type="checkbox" id="scrape-favorites" v-model="scrapeFavorites" /> Favorites</label>
+        </fieldset>
+        <p v-if="scrapeFavorites && !isSubmissionUrl" class="warning">Favorites can be a HUGE amount of submissions!</p>
+        <div class="user-choices">
+          <button id="stop-all" type="button" :disabled="notActive" @click="stopAll">■ Stop</button>
+          <span class="activity" :class="{ 'activity--busy': !notActive }">{{notActive ? 'Idle' : 'Working...'}}</span>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h3 class="panel__title">Library</h3>
+      <div class="library-actions">
+        <button id="view-gallery" type="button" class="primary" @click="viewGallery">View Gallery</button>
+        <button id="repair" type="button" @click="repair" :title="repairAlt">Repair Database</button>
+        <button class="user-input__file" type="button" id="old_downloads" @click="importData" title="Previous data should be in the same folder as this program">Import old data</button>
       </div>
-      <div class="user-choices">
-        <button id="repair" @click.prevent="repair" :alt="repairAlt" :title="repairAlt">Repair Database</button>
-        <button id="login" @click.prevent="login">{{loginBtnText}}</button>
-        <button id="view-gallery" @click.prevent="viewGallery">View Gallery</button>
-        <button id="stop-all" :disabled="notActive" @click.prevent="stopAll">Stop</button>
+      <p class="hint">Missing data? <b>Repair</b> re-checks tags, ratings and dates. <b>Import</b> pulls in a previous install placed next to this program.</p>
+    </section>
+
+    <section class="panel account-list">
+      <div class="tab-container" role="tablist">
+        <button type="button" role="tab" class="tab" :class="{ active: tab === 0 }" :aria-selected="tab === 0" @click="tab = 0">
+          Logged-in accounts <span class="count">{{accounts.length}}</span>
+        </button>
+        <button type="button" role="tab" class="tab" :class="{ active: tab === 1 }" :aria-selected="tab === 1" @click="tab = 1">
+          Downloaded users <span class="count">{{computedDownloadAccounts.length}}</span>
+        </button>
       </div>
-      <div class="user-input__old_downloads">
-        <label for="old_downloads"><span class="warning">Missing Data?</span> Import data from a previous install:</label>
-        <br/>
-        <button class="user-input__file" type="file" id="old_downloads" @click.prevent="importData">Import data</button>
-        <i class="user-input__file-path">(Previous data should be in the same folder as this program)</i>
-      </div>
-    </form>
-    <div class="account-list" ref="tabContainer">
-      <div class="tab-container" @click.prevent="tabClick">
-        <h3 class="tab active">Verified Accounts</h3>
-        <h3 class="tab">All Accounts</h3>
-      </div>
-      <div class="tab-content-container active">
-        <p>Login to an account to see it listed here!</p>
-        <ul>
-          <template v-for="(name, i) in accounts">
-            <li>
-              <span>{{name}}</span>
-              <button @click.prevent="deleteAccount(name)" alt="Delete account name" title="Delete account name">❌</button>
-            </li>
-          </template>
+      <div v-if="tab === 0" class="tab-content-container active">
+        <p v-if="!accounts.length" class="hint">Log in to an account to see it listed here.</p>
+        <ul v-else>
+          <li v-for="name in accounts" :key="name">
+            <span>{{name}}</span>
+            <button type="button" class="icon-btn" @click="deleteAccount(name)" title="Forget this login">✖</button>
+          </li>
         </ul>
       </div>
-      <div class="tab-content-container">
-        <p>All downloaded accounts</p>
-        <ul>
-          <template v-for="name in computedDownloadAccounts">
-            <li>
-              <span>{{name}}</span><button @click.prevent="deleteUserAccount(name)" alt="Delete account" title="Delete account">❌</button>
-            </li>
-          </template>
+      <div v-else class="tab-content-container active">
+        <p v-if="!computedDownloadAccounts.length" class="hint">Nothing downloaded yet.</p>
+        <ul v-else>
+          <li v-for="name in computedDownloadAccounts" :key="name">
+            <a href="#" @click.prevent="username = name" title="Put this name in the download box">{{name}}</a>
+            <button type="button" class="icon-btn" @click="deleteUserAccount(name)" title="Delete this user's downloaded data">✖</button>
+          </li>
         </ul>
       </div>
-    </div>
+    </section>
   </div>
   `,
   emits: ['sendData', 'sendEvent'],
@@ -68,6 +74,7 @@ export default {
       scrapeComments: true,
       scrapeFavorites: false,
       notActive: true,
+      tab: 0,
       repairAlt: 'Check and repair submission data (tags, ratings, etc.)',
     };
   },
@@ -84,17 +91,19 @@ export default {
       return /^https?:\/\/(?:www\.)?furaffinity\.net\/view\/\d+\/?$/i.test(this.username);
     },
     galleryOptionsLabel() {
-      return this.isSubmissionUrl ? 'Submission to download:' : 'Galleries to download:';
+      return this.isSubmissionUrl ? 'Submission to download' : 'Users to download';
+    },
+    inputHint() {
+      if (this.isSubmissionUrl) return 'Downloads just this one submission.';
+      if (!this.username) return 'Leave empty to continue a previous download.';
+      return 'Separate several users with commas.';
     },
     name() {
       return this.username.toLowerCase().trim().replace(/_/gi, '');
     },
-    loginBtnText() {
-      return this.isLoggedIn ? 'Switch Accounts': 'Login';
-    },
     downloadText() {
       if (this.isSubmissionUrl) return 'Download Submission';
-      return (this.username) ? 'Download User Galleries' : 'Continue Previous Download';
+      return (this.username) ? 'Download' : 'Continue Previous';
     },
     computedDownloadAccounts() {
       if (!this.downloadAccounts?.length) return [];
@@ -102,9 +111,6 @@ export default {
     },
   },
   methods: {
-    login() {
-      this.$emit('sendEvent', 'login');
-    },
     viewGallery() {
       this.$emit('sendEvent', 'view-gallery');
     },
@@ -116,7 +122,6 @@ export default {
       this.$emit('sendEvent', 'stop-all');
     },
     sendData() {
-      // this.notActive = false;
       if (this.isSubmissionUrl) {
         const submissionUrl = this.username.trim();
         this.username = '';
@@ -139,22 +144,5 @@ export default {
     importData() {
       this.$emit('sendEvent', { choice: 'import-old-data' });
     },
-    tabClick(e) {
-      if (!e.target.classList.contains('tab')) return;
-      const divs = [...e.target.parentNode.children];
-      divs.forEach(e => e.classList.remove('active'));
-      e.target.classList.add('active');
-      divs.some((e, i) => {
-        if (e.classList.contains('active')) {
-          this.activateTab(i);
-          return true;
-        }
-      });
-    },
-    activateTab(index) {
-      const divs = this.$refs.tabContainer.querySelectorAll('.tab-content-container');
-      divs.forEach(e => e.classList.remove('active'));
-      divs[index].classList.add('active');
-    }
   }
 }

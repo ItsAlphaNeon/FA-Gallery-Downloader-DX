@@ -67,6 +67,7 @@ npm run build    # Build for production
 npm test         # unit tests (parsers, database, input sanitizing) - no browser or login needed
 npm run check    # lint + tests
 npm run check:fa # live canary: loads a few real FA pages with your saved login and reports anything that no longer parses
+npm run preview:ui # serves the start page and gallery at http://localhost:5177 with fake bindings, for UI work
 ```
 
 FA changes its markup often. The parser tests run against trimmed, anonymized pages in `test/fixtures/`. When `npm run check:fa` reports a problem, fix the parser in `js/scrape-data.js`, then refresh the matching fixture so the tests describe the new layout. Close the downloader before running `check:fa` (it uses the same browser profile).

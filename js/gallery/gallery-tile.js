@@ -4,19 +4,21 @@ export default {
   name: 'gallery-tile',
   template: `
     <div class="gallery-tile">
-      <div class="gallery-tile__thumbnail" :class="[classRating]" @click="loadSubmission" :alt="altText" :title="altText">
+      <div class="gallery-tile__thumbnail" :class="[classRating]" @click="loadSubmission" :title="altText">
         <img v-if="isImg" class="gallery-tile__blur-bg" :src="computedImgPath" aria-hidden="true" />
         <div class="gallery-tile__thumbnail_wrapper">
           <div v-if="error" class="gallery-tile__thumbnail-other">⚠ ERROR! ⚠<br>Possible<br>corrupt file!</div>
-          <img v-else-if="isImg" :src="computedImgPath" @load="onImgLoad" @error="onError"/>
+          <img v-else-if="isImg" :src="computedImgPath" loading="lazy" alt="" @load="onImgLoad" @error="onError"/>
           <div v-else-if="!is_content_saved" class="gallery-tile__thumbnail-other not-downloaded"><span>File not downloaded!<br>Type: {{fileExtension}}</span></div>
           <div v-else class="gallery-tile__thumbnail-other file-type"><span>Filetype:<br>{{fileExtension}}</span></div>
         </div>
       </div>
       <div class="gallery-tile__info">
-        <div class="gallery-tile__title" @click="loadSubmission" :alt="altText" :title="altText">{{title}}</div>
-        <div class="gallery-tile__user">by <span @click="searchUser" :alt="userAltText" :title="userAltText">{{pretty_username}}</span></div>
-        <div class="gallery-tile__date" :title="dateTitle" :alt="dateTitle">Uploaded: {{relativeDate}}</div>
+        <a href="#" class="gallery-tile__title" @click.prevent="loadSubmission" :title="title">{{title}}</a>
+        <div class="gallery-tile__meta">
+          <span class="gallery-tile__user">by <a href="#" @click.prevent="searchUser" :title="userAltText">{{pretty_username}}</a></span>
+          <span class="gallery-tile__date" :title="dateTitle">{{relativeDate}}</span>
+        </div>
       </div>
     </div>
   `,
@@ -26,7 +28,7 @@ export default {
     return {
       contentPath: '',
       altText: 'View this submission!',
-      userAltText: 'Search for this user!',
+      userAltText: 'Show only this user',
       error: false,
       isDefaultThumbnail: false,
     };

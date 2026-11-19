@@ -6,34 +6,36 @@ export default {
   components: { statusDisplay, startupForm },
   template: `
     <div class="startup-container">
-      <div class="startup-header">
-        <div class="logged-in-status">Logged in as: 
-          <span>{{loggedInName}}</span>
-          <div class="user-icon">
-            <img v-if="iconSrc" :src="iconSrc" @error="fixIcon"/>
+      <header class="startup-header">
+        <div class="startup-title">
+          <h2>🐾 FA Gallery Downloader DX 🐾</h2>
+          <div class="credits">by SpottedSqueak, maintained by AlphaNeon</div>
+        </div>
+        <div class="logged-in-status" :class="{ 'logged-out': !username }">
+          <div class="logged-in-status__text">
+            <template v-if="username">Logged in as <span>{{username}}</span></template>
+            <template v-else>Not logged in</template>
           </div>
+          <div class="user-icon">
+            <img v-if="iconSrc" :src="iconSrc" @error="fixIcon" alt=""/>
+          </div>
+          <button class="small" @click="sendEvent('login')">{{username ? 'Switch account' : 'Log in'}}</button>
         </div>
-        <h2 class="startup-title">
-          🐾 FA Gallery Downloader DX 🐾
-         <div class="credits">
-          by SpottedSqueak, maintained by AlphaNeon
-        </div>
-        </h2>
-      </div>
-      <startup-form :is-logged-in="!!this.username" :outsideUsername="queryName" :outsideActive="isActive" :accounts="accounts" :download-accounts="downloadAccounts" @send-data="sendFormData" @send-event="sendEvent"></startup-form>
-      <status-display :msg="msg" :log-progress="logProgress" @clear-msg="clearMsg"></status-display>
-      <div class="version">
+      </header>
+      <startup-form :is-logged-in="!!username" :outsideUsername="queryName" :outsideActive="isActive" :accounts="accounts" :download-accounts="downloadAccounts" @send-data="sendFormData" @send-event="sendEvent"></startup-form>
+      <status-display :msg="msg" :log-progress="logProgress" :is-active="isActive" @clear-msg="clearMsg"></status-display>
+      <footer class="version">
         <span v-if="!version">Loading version...</span>
         <template v-else>
           <template v-if="hasUpdate">
-            <a class="has-update" :href="githubLink" @click.prevent="open">Update available!</a> | 
+            <a class="has-update" :href="githubLink" @click.prevent="open">Update available!</a> |
           </template>
           <span>Current: <b>{{version}}</b></span>
           <span v-if="showVersion"> | Latest: <b>{{newVersion}}</b></span>
         </template>
         |
         <a :href="githubLink" @click.prevent="open"><b>Github Repo</b></a>
-      </div>
+      </footer>
     </div>
   `,
   data() {
@@ -75,9 +77,6 @@ export default {
     }, 10 * 60 * 1000);
   },
   computed: {
-    loggedInName() {
-      return this.username || '???';
-    },
     iconSrc() {
       if (!this.username) return '';
       const cleanName = this.username.split(' ')[0].toLowerCase().replace(/[_]/g, '');
@@ -93,6 +92,7 @@ export default {
         let i = 0;
         while (i < currVersion.length) {
           if (+newVersion[i] > +currVersion[i]) return true;
+          if (+newVersion[i] < +currVersion[i]) return false;
           i++;
         }
       }
@@ -109,7 +109,7 @@ export default {
       window.userPath?.(data);
     },
     sendEvent(data) {
-      if (data.length) data = { choice: data };
+      if (typeof data === 'string') data = { choice: data };
       if (data.choice === 'repair') this.isActive = true;
       if (data.choice === 'stop-all') this.isActive = false;
       window.userPath?.(data);

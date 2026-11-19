@@ -3,7 +3,18 @@ import getRelativeTime from './relative-time.js';
 export default {
   name: 'submission-view',
   template: `
-    <div class="submission-view" @click.prevent="possibleOpen">
+    <div class="submission-view">
+      <nav class="submission-toolbar">
+        <button class="close-btn" @click="close" title="Back to the gallery (Esc)">‹ Back to gallery</button>
+        <div class="submission-toolbar__steps">
+          <button :disabled="!hasPrev" @click="$emit('step', -1)" title="Previous submission (←)">← Prev</button>
+          <button :disabled="!hasNext" @click="$emit('step', 1)" title="Next submission (→)">Next →</button>
+        </div>
+        <div class="submission-toolbar__links">
+          <button class="full-size-btn" :disabled="!isDownloadable" @click="openInNewWindow">View full size</button>
+          <button v-if="submission.url" @click="openOnFa">View on FA ↗</button>
+        </div>
+      </nav>
       <div class="submission-container">
         <div class="submission-hero">
           <div v-if="error" class="download-link" @click="downloadContent">File possibly corrupted!<br>Redownload?</div>
@@ -24,68 +35,72 @@ export default {
           <div v-else-if="isDownloadable" class="music-embed">Content: "{{submission.content_name}}" not displayable</div>
           <div v-else class="download-link" @click="downloadContent">Content not downloaded!<br>Download now?</div>
         </div>
-        <div class="submission-metadata">
-          <button class="close-btn" @click="close">✖ Close</button>
-          <button class="full-size-btn" :disabled="!isDownloadable" @click.self="openInNewWindow">View Full Size</button>
-          <div class="submission-metadata__info">
-            <h3>Rating</h3>
-            <div :class="[cleanRating]">{{submission.rating || '[Missing]'}}</div>
-          </div>
-          <div class="submission-metadata__info">
-            <h3>Category</h3>
-            <div>{{submission.category  || '[Missing]'}}</div>
-          </div>
-          <div class="submission-metadata__info">
-            <h3>Tags</h3>
-            <ul class="submission-metadata__tags">
-              <li v-for="tag in cleanTags">
-                {{tag}}
-              </li>
-            </ul>
-            <div v-if="!cleanTags.length">No Tags</div>
-          </div>
-        </div>
-        <div class="submission-info">
+        <aside class="submission-metadata">
           <div class="submission-info__header">
             <div class="submission-info__user-icon">
-              <img :src="getCleanUserImg(submission.username)" @error="fixIcon"/>
+              <img :src="getCleanUserImg(submission.username)" @error="fixIcon" alt=""/>
             </div>
-            <div class="submission-info__title">{{submission.title}}</div>
-            <div class="submission-info__user">
-              <span>By {{submission.pretty_username}} | </span>
-              <b :title="dateUploaded" :alt="dateUploaded">Uploaded: {{relativeDate}}</b>
+            <div>
+              <h2 class="submission-info__title">{{submission.title}}</h2>
+              <div class="submission-info__user">
+                by <a href="#" @click.prevent="$emit('searchUser', submission.username)" title="Show only this user">{{submission.pretty_username || submission.username}}</a>
+              </div>
             </div>
           </div>
-          <div class="submission-info__content">
-            <div class="submission-info__desc" v-html="cleanDesc"></div>
-          </div>
-        </div>
+          <dl class="submission-metadata__info">
+            <dt>Uploaded</dt>
+            <dd :title="dateUploaded">{{relativeDate}}<br><small>{{dateUploaded}}</small></dd>
+            <dt>Rating</dt>
+            <dd><span class="rating-badge" :class="[cleanRating]">{{submission.rating || '[Missing]'}}</span></dd>
+            <dt>Category</dt>
+            <dd>{{submission.category || '[Missing]'}}</dd>
+            <dt>File</dt>
+            <dd class="submission-metadata__file" :title="submission.content_name">{{submission.content_name}}</dd>
+          </dl>
+          <h3>Tags</h3>
+          <ul v-if="cleanTags.length" class="submission-metadata__tags">
+            <li v-for="tag in cleanTags" :key="tag">
+              <a href="#" @click.prevent="$emit('searchTag', tag)" title="Search for this tag">{{tag}}</a>
+            </li>
+          </ul>
+          <div v-else class="muted">No tags</div>
+        </aside>
+        <section class="submission-info">
+          <div class="submission-info__desc" v-html="cleanDesc" @click="possibleOpen"></div>
+        </section>
       </div>
-      <button class="download-comments" @click="downloadComments">Download Comments</button>
-      <div class="comment-container">
-        <template v-for="comment in comments">
-          <div class="comment" :style="comment.width">
-            <div class="comment-icon"><img :src="getCleanUserImg(comment.username)" @error="fixIcon" /></div>
+      <section class="comments-section">
+        <div class="comments-header">
+          <h3>Comments <span class="count">{{comments?.length || 0}}</span></h3>
+          <button class="download-comments" :disabled="downloadingComments" @click="downloadComments">
+            {{downloadingComments ? 'Downloading...' : comments?.length ? 'Refresh comments' : 'Download comments'}}
+          </button>
+        </div>
+        <p v-if="!comments?.length" class="muted">No comments saved for this submission.</p>
+        <div class="comment-container">
+          <div v-for="comment in comments" :key="comment.id" class="comment" :style="comment.width">
+            <div class="comment-icon"><img :src="getCleanUserImg(comment.username)" @error="fixIcon" alt="" /></div>
             <div class="comment-header">
               <div class="comment-user">
                 {{getCleanUsername(comment.username)}}
-                <span :alt="getCommentTitle(comment)" :title="getCommentTitle(comment)">{{getCommentDate(comment)}}</span>
+                <span :title="getCommentTitle(comment)">{{getCommentDate(comment)}}</span>
               </div>
               <div class="comment-subtitle">{{comment.subtitle}}</div>
             </div>
-            <div class="comment-desc" v-html="getCleanDesc(comment.desc)"></div>
+            <div class="comment-desc" v-html="getCleanDesc(comment.desc)" @click="possibleOpen"></div>
           </div>
-        </template>
-      </div>
+        </div>
+      </section>
     </div>
   `,
-  props: ['submission', 'comments'],
-  emits: ['clearSubmission', 'downloadComments', 'downloadContent'],
+  props: ['submission', 'comments', 'hasPrev', 'hasNext'],
+  emits: ['clearSubmission', 'downloadComments', 'downloadContent', 'step', 'searchUser', 'searchTag'],
   data() {
     return {
       contentPath: '',
       altText: 'Click to open in a new tab!',
       error: false,
+      downloadingComments: false,
     };
   },
   beforeMount() {
@@ -94,6 +109,7 @@ export default {
   watch: {
     submission() {
       this.error = false;
+      this.downloadingComments = false;
     }
   },
   computed: {
@@ -206,7 +222,11 @@ export default {
     },
     downloadComments() {
       const { id, url } = this.submission;
+      this.downloadingComments = true;
       this.$emit('downloadComments', id, url);
+    },
+    openOnFa() {
+      window.openUrl?.(this.submission.url);
     },
     downloadContent() {
       this.$emit('downloadContent', this.submission);
@@ -218,8 +238,10 @@ export default {
       e.target.src = '../html/resources/_default.gif';
     },
     possibleOpen(e) {
-      const url = e.target.closest('a')?.href;
-      if (url) window.openUrl?.(url);
+      const link = e.target.closest('a');
+      if (!link) return;
+      e.preventDefault();
+      if (link.href) window.openUrl?.(link.href);
     }
   },
 }
