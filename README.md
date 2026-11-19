@@ -61,6 +61,16 @@ npm run start    # Run in development mode
 npm run build    # Build for production
 ```
 
+### Testing
+
+```bash
+npm test         # unit tests (parsers, database, input sanitizing) - no browser or login needed
+npm run check    # lint + tests
+npm run check:fa # live canary: loads a few real FA pages with your saved login and reports anything that no longer parses
+```
+
+FA changes its markup often. The parser tests run against trimmed, anonymized pages in `test/fixtures/`. When `npm run check:fa` reports a problem, fix the parser in `js/scrape-data.js`, then refresh the matching fixture so the tests describe the new layout. Close the downloader before running `check:fa` (it uses the same browser profile).
+
 Building requires [@radically-straightforward/package](https://github.com/radically-straightforward/radically-straightforward/tree/main/package). Note that the build process copies all files in the working directory—consider isolating source files before packaging.
 
 ## How It Works

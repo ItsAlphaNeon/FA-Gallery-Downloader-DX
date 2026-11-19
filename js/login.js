@@ -15,10 +15,17 @@ function setRequestHeaders(faCookies) {
     }
   };
 }
+/**
+ * Is the page using the old (classic) FA theme, which this program can't parse?
+ * @param {CheerioAPI} $
+ */
+export function isClassicTheme($) {
+  return /classic/i.test($('body').data('static-path'));
+}
 export async function checkForOldTheme(page) {
   const $ = await getHTML(FA_URL_BASE).catch(() => false);
   if (!$) return console.log(`[Warn] FA might be down, please try again later`);
-  if (/classic/i.test($('body').data('static-path'))) {
+  if (isClassicTheme($)) {
     console.log(`[Warn] Using incompatible old FA theme, prompting user to update settings`);
     page = await browser.newPage();
     page.setDefaultNavigationTimeout(0);
@@ -61,12 +68,16 @@ export async function checkForOldTheme(page) {
  * @param {CheerioAPI} $ 
  * @returns 
  */
-function setUsername($) {
-  // Need to get username for loggedin user
-  let href = $('#ddmenu a[href^="/user"]').first().attr('href');
+export function parseLoggedInUsername($) {
+  // The menu bar links to the logged-in user's own page
+  const href = $('#ddmenu a[href^="/user"]').first().attr('href');
   if (!href) return false;
-  href.replace('#', '');
-  username = href.split('user/')[1].split('/')[0];
+  return href.split('user/')[1].split('/')[0] || false;
+}
+function setUsername($) {
+  const name = parseLoggedInUsername($);
+  if (!name) return false;
+  username = name;
   return username;
 }
 async function checkIfCookiesExpired() {

@@ -122,7 +122,40 @@ export async function upgradeDatabase(db) {
     case 12:
       await fixInvalidUsernames();
       version = 13;
-      
+    case 13:
+      // FA now exposes a permanent per-account UUID ("Unique ID") on profile pages.
+      // Track users by it so username changes don't split a user's data.
+      await db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        uuid TEXT PRIMARY KEY,
+        username TEXT,
+        account_name TEXT,
+        pretty_username TEXT,
+        registered TEXT,
+        previous_usernames TEXT,
+        first_seen TEXT,
+        last_seen TEXT
+      )`);
+      await db.exec(`CREATE INDEX IF NOT EXISTS idx_users_account_name ON users(account_name)`);
+      await db.exec(`ALTER TABLE subdata ADD COLUMN user_uuid TEXT`).catch(() => {});
+      await db.exec(`ALTER TABLE favorites ADD COLUMN user_uuid TEXT`).catch(() => {});
+      await db.exec(`CREATE INDEX IF NOT EXISTS idx_subdata_user_uuid ON subdata(user_uuid)`);
+      version = 14;
+    case 14:
+      // FA renders dates as text in a timezone that varies by session; store the real epoch too.
+      await db.exec(`ALTER TABLE subdata ADD COLUMN uploaded_at INTEGER`).catch(() => {});
+      await db.exec(`ALTER TABLE commentdata ADD COLUMN posted_at INTEGER`).catch(() => {});
+      version = 15;
+    case 15: {
+      // Comment usernames were saved as "Display Name   ~login" with embedded whitespace. Keep just the login.
+      const rows = await db.all(`SELECT id, username FROM commentdata WHERE username LIKE '%' || char(10) || '%'`);
+      for (const { id, username } of rows) {
+        const name = username.match(/~\s*(\S+)\s*$/)?.[1] || username.trim().split(/\s+/)[0];
+        await db.run('UPDATE commentdata SET username = ?, account_name = ? WHERE id = ?', name, name.replace(/_/g, ''), id);
+      }
+      version = 16;
+    }
+
     default:
       await db.exec(`VACUUM`);
       await db.exec(`PRAGMA user_version = ${version}`);

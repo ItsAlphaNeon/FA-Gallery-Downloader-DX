@@ -69,7 +69,7 @@ export default {
             <div class="comment-header">
               <div class="comment-user">
                 {{getCleanUsername(comment.username)}}
-                <span :alt="comment.date" :title="comment.date">{{getCommentDate(comment.date)}}</span>
+                <span :alt="getCommentTitle(comment)" :title="getCommentTitle(comment)">{{getCommentDate(comment)}}</span>
               </div>
               <div class="comment-subtitle">{{comment.subtitle}}</div>
             </div>
@@ -159,10 +159,12 @@ export default {
       return this.submission.content_name.split('.').pop();
     },
     relativeDate() {
-      return getRelativeTime(+new Date(this.submission.date_uploaded));
+      const { uploaded_at, date_uploaded } = this.submission;
+      return getRelativeTime(uploaded_at ? uploaded_at * 1000 : +new Date(date_uploaded));
     },
     dateUploaded() {
-      return this.submission.date_uploaded;
+      const { uploaded_at, date_uploaded } = this.submission;
+      return uploaded_at ? new Date(uploaded_at * 1000).toLocaleString() : date_uploaded;
     },
     cleanDesc() {
       return this.getCleanDesc(this.submission.desc);
@@ -188,9 +190,13 @@ export default {
         .replace(/"\/user/gi, '"https://www.furaffinity.net/user')
         .replace(/img src/gi, `img onerror='this.src="../html/resources/_default.gif"' src`);
     },
-    getCommentDate(date) {
+    getCommentDate({ date, posted_at }) {
+      if (posted_at) return getRelativeTime(posted_at * 1000);
       if (!date) return '';
       return getRelativeTime(+new Date(date));
+    },
+    getCommentTitle({ date, posted_at }) {
+      return posted_at ? new Date(posted_at * 1000).toLocaleString() : date;
     },
     async getContentPath() {
       this.contentPath = await window.getContentPath();

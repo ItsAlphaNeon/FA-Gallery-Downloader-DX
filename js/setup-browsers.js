@@ -36,7 +36,7 @@ async function getBrowserInfo() {
  * Find the path to a browser executable to use for Puppeteer
  * @returns 
  */
-async function getBrowserPath() {
+export async function getBrowserPath() {
   const product = 'chrome';
   let chromePath = await getPromise(getChromiumPath).catch(() => getPromise(getChromePath)).catch(() => '');
   if (!chromePath) {

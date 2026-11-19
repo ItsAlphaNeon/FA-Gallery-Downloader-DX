@@ -7,6 +7,7 @@ import fs from 'fs-extra';
 import * as db from './database-interface.js';
 import { exitCode, default as process, platform } from 'node:process';
 import { FA_URL_BASE, RELEASE_CHECK, LOG_DIR as logDir } from './constants.js';
+import { isFaUrl } from './sanitize.js';
 /** @import { CheerioAPI } from 'cheerio' */
 
 export const isWindows = platform === 'win32';
@@ -138,8 +139,8 @@ logProgress.busy = (id) => {
  * @returns {CheerioAPI}
  */
 export function getHTML(url, sendHeaders = true) {
-  const headers = sendHeaders ? faRequestHeaders : {};
-  headers.timeout = { response: 3000 };
+  // Login cookies are only ever sent to furaffinity.net hosts
+  const headers = (sendHeaders && isFaUrl(url)) ? faRequestHeaders : {};
   return got(url, {
     ...headers, ...{
       timeout: { response: 3000 },
@@ -171,7 +172,7 @@ export async function releaseCheck() {
   return data;
 }
 export async function urlExists(url, sendHeaders = true) {
-  let headers = sendHeaders ? faRequestHeaders : {};
+  let headers = (sendHeaders && isFaUrl(url)) ? faRequestHeaders : {};
   headers = {
     ...headers,
     method: 'HEAD',

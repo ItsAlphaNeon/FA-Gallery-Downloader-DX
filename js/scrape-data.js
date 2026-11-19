@@ -1,18 +1,93 @@
 import random from 'random';
-import { FA_URL_BASE } from './constants.js';
+import { FA_URL_BASE, FA_USER_BASE } from './constants.js';
 import * as db from './database-interface.js';
-import { logProgress, waitFor, getHTML, stop, sendStartupInfo, saveDebugFile } from './utils.js';
+import { logProgress, waitFor, getHTML, stop, sendStartupInfo } from './utils.js';
 
 const scrapeID = 'scrape-div';
 const progressID = 'data';
 const maxRetries = 6;
+const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
+/**
+ * Parses the profile header of a user/gallery/scraps page for the account's identity.
+ * Returns null if no UUID could be found (e.g. page layout changed, or not a profile page).
+ * @param {Cheerio} $
+ * @returns {Object|null}
+ */
+export function processUserHTML($) {
+  const idLink = $('a[href^="/user/id:"]').first().attr('href') || '';
+  const uuid = (idLink.match(UUID_REGEX) || $('.user-title').text().match(UUID_REGEX) || [])[0];
+  if (!uuid) return null;
+  const username = $('.c-usernameBlock__userName').first().attr('href')?.split('/user/')[1]?.replace(/\/$/, '')
+    || $('meta[property="og:url"]').attr('content')?.split('/user/')[1]?.replace(/\/$/, '')
+    || '';
+  if (!username) return null;
+  const pretty_username = $('.c-usernameBlock__displayName .js-displayName').first().text().trim();
+  const registeredEl = $('.user-title .popup_date').first();
+  const epoch = Number(registeredEl.attr('data-time'));
+  const registered = epoch ? new Date(epoch * 1000).toISOString() : registeredEl.text().trim();
+  return {
+    uuid: uuid.toLowerCase(),
+    username,
+    account_name: username.replace(/_/g, ''),
+    pretty_username,
+    registered,
+  };
+}
+/**
+ * Saves the user identity found in the given profile HTML and links their existing data to it.
+ * @param {Cheerio} $
+ * @returns {Promise<Object|null>} The saved user, or null if no UUID was found.
+ */
+export async function saveUserProfile($) {
+  const user = processUserHTML($);
+  if (!user) {
+    console.log('[Warn] Could not find user UUID, FA UI may have changed');
+    return null;
+  }
+  const { renamedFrom } = await db.saveUser(user);
+  if (renamedFrom) console.log(`[Data] User rename detected: ${renamedFrom} -> ${user.username} (${user.uuid})`);
+  await db.linkUserUuid(user.uuid, user.username);
+  if (renamedFrom) await db.linkUserUuid(user.uuid, renamedFrom);
+  return user;
+}
+const profileChecked = new Set();
+/**
+ * Makes sure the given username has a UUID on record, fetching their profile once if needed.
+ * @param {String} username
+ */
+export async function ensureUserProfile(username) {
+  if (!username || profileChecked.has(username)) return;
+  profileChecked.add(username);
+  if (await db.getUserByName(username)) return;
+  const $ = await getHTML(FA_USER_BASE + username).catch(() => false);
+  if (!$) return;
+  await saveUserProfile($);
+}
+
+/**
+ * Collects the submission links on a gallery/scraps/favorites page.
+ * @param {Cheerio} $
+ * @returns {String[]} Absolute submission URLs
+ */
+export function parseGalleryLinks($) {
+  return Array.from($('figcaption a[href^="/view"]'))
+    .map((a) => FA_URL_BASE + a.attribs.href);
+}
+/**
+ * Finds the "Next" page of a favorites listing (favorites paginate with a form, not page numbers).
+ * @returns {String|undefined} Absolute URL of the next page, if there is one
+ */
+export function parseFavoritesNextPage($, url) {
+  const action = $(`form[action$="next"]`).attr('action');
+  return action ? url.split('/favorite')[0] + action : undefined;
+}
 /**
  * Walks the user's gallery in order to gather all submission links for future download.
  * @param {String} url Gallery URL
  * @param {Boolean} isScraps Is this the scraps folder or not?
  */
-export async function getSubmissionLinks({ url, username, isScraps = false, isFavorites = false }) {
+export async function getSubmissionLinks({ url, username, userUuid = null, isScraps = false, isFavorites = false }) {
   let dirName = (isFavorites) ? 'favorites': (isScraps) ? 'scraps' : 'gallery';
   const divID = `${scrapeID}${isScraps ? '-scraps':''}`;
   let currPageCount = 1;
@@ -38,8 +113,7 @@ export async function getSubmissionLinks({ url, username, isScraps = false, isFa
     }
     retryCount = 0;
     // Check for content
-    let newLinks = Array.from($('figcaption a[href^="/view"]'))
-      .map((div) => FA_URL_BASE + div.attribs.href);
+    let newLinks = parseGalleryLinks($);
     if (!newLinks.length) {
       // console.log(`[Data] Found ${currPageCount} pages of submissions!`, divID);
       break;
@@ -50,13 +124,12 @@ export async function getSubmissionLinks({ url, username, isScraps = false, isFa
       logProgress.reset(progressID);
       break;
     }
-    if (isFavorites && username) await db.saveFavorites(username, newLinks);
+    if (isFavorites && username) await db.saveFavorites(username, newLinks, userUuid);
     currLinks = currLinks += newLinks.length;
     currPageCount++;
     if (isFavorites) {
-      nextPage = $(`form[action$="next"]`).attr('action');
-      if (nextPage) nextPage = url.split('/favorite')[0] + nextPage;
-      else break;
+      nextPage = parseFavoritesNextPage($, url);
+      if (!nextPage) break;
     }
     await waitFor(random.int(1000, 2500));
   }
@@ -87,7 +160,29 @@ export async function scrapeComments($, submission_id, url) {
     }
     break;
   } while (!$);
-  const comments = Array.from($('#comments-submission .comment_container'))
+  const comments = parseComments($, submission_id);
+  if(!comments.length) return;
+  return db.saveComments(comments);
+}
+/**
+ * Gets the commenter's login name. The <comment-username> text holds the display name AND "~login"
+ * (with a lot of whitespace), so read the dedicated link instead.
+ */
+function parseCommentUsername($, $div) {
+  const link = $div.find('.c-usernameBlock__userName').first();
+  const fromHref = link.attr('href')?.split('/user/')[1]?.replace(/\/$/, '');
+  if (fromHref) return fromHref;
+  const text = link.text().replace('~', '').trim();
+  return text || $div.find('comment-username').text().replace(/\s+/g, ' ').trim();
+}
+/**
+ * Parses all comments on a submission page.
+ * @param {Cheerio} $
+ * @param {String} submission_id
+ * @returns {Object[]}
+ */
+export function parseComments($, submission_id) {
+  return Array.from($('#comments-submission .comment_container'))
     .map((val) => {
       const $div = $(val);
       const isDeleted = $div.find('comment-container').hasClass('deleted-comment-container');
@@ -96,7 +191,8 @@ export async function scrapeComments($, submission_id, url) {
         date = $div.find('comment-date > span').attr('title').trim();
         if (/ago/i.test(date)) date = $div.find('comment-date > span').text().trim();
       }
-      const username = isDeleted ? '' : $div.find('comment-username').text().trim();
+      const posted_at = isDeleted ? null : (Number($div.find('comment-date .popup_date').attr('data-time')) || null);
+      const username = isDeleted ? '' : parseCommentUsername($, $div);
       return {
         id: $div.find('.comment_anchor').attr('id'),
         submission_id,
@@ -106,10 +202,9 @@ export async function scrapeComments($, submission_id, url) {
         desc: isDeleted ? '' : $div.find('comment-user-text .user-submitted-links').html().trim(),
         subtitle: isDeleted ? '' : $div.find('comment-title').text().trim(),
         date,
+        posted_at,
       }
     });
-  if(!comments.length) return;
-  return db.saveComments(comments);
 }
 const metadataID = 'scrape-metadata';
 /**
@@ -158,7 +253,11 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
     const data = processSubmissionHTML($, links[index].url);
     // Save data to db
     await db.saveMetaData(links[index].url, data);
-    // Save comments 
+    // Link to the artist's permanent UUID (fetches their profile once if unknown)
+    await ensureUserProfile(data.username).catch(() => {});
+    const artist = await db.getUserByName(data.username);
+    await db.setSubmissionUserUuid(data.id, artist?.uuid);
+    // Save comments
     if (downloadComments) await scrapeComments($, data.id);
     index++;
     if (index % 2) await waitFor(random.int(1000, 2500));
@@ -179,6 +278,8 @@ export function processSubmissionHTML($, url) { // Seperated from scrapeSubmissi
   } catch (e) {
     console.log('[Warn] Could not parse date, FA UI may have changed');
   }
+
+  const uploaded_at = Number($('.popup_date').first().attr('data-time')) || null;
 
   let prettyUsername = '';
   try {
@@ -269,6 +370,7 @@ export function processSubmissionHTML($, url) { // Seperated from scrapeSubmissi
     content_name,
     content_url,
     date_uploaded: date,
+    uploaded_at,
     thumbnail_url,
     rating,
     category,

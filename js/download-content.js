@@ -6,6 +6,7 @@ import fs from 'fs-extra';
 import { join } from 'node:path';
 import got from 'got';
 import { DOWNLOAD_DIR as downloadDir } from './constants.js';
+import { isFaUrl, safeJoin, sanitizeFileName } from './sanitize.js';
 
 const progressID = 'file';
 const dlOptions = {
@@ -45,10 +46,15 @@ async function downloadSetup({ content_url, content_name, downloadLocation, retr
     await db.setContentNotSaved(content_url);
     return Promise.reject();
   }
+  // Only download from FA (login cookies are attached), and never write outside the target folder
+  const fileLocation = safeJoin(downloadLocation, sanitizeFileName(content_name, ''));
+  if (!isFaUrl(content_url) || !fileLocation) {
+    console.log(`[Warn] Skipping unsafe download: ${content_name}`);
+    return Promise.reject();
+  }
   // Check to see if this file even exists by checking the header response
   if (await urlExists(content_url)) {
     console.log(`Downloading: ${content_name}`);
-    const fileLocation = join(downloadLocation, content_name);
     await fs.ensureDir(downloadLocation, dlOptions);
     return new Promise((resolve, reject) => {
       const dlStream = got.stream(content_url, {
@@ -175,7 +181,8 @@ export async function deleteInvalidFiles() {
  */
 export async function downloadSpecificContent({ content_url, content_name, account_name }) {
   if (stop.now) return;
-  const downloadLocation = join(downloadDir, account_name.replace(/\.$/, '._'));
+  const downloadLocation = safeJoin(downloadDir, sanitizeFileName(String(account_name).replace(/\.$/, '._'), ''));
+  if (!downloadLocation) return console.log(`[Warn] Invalid account folder for: ${content_name}`);
   return downloadSetup({ content_url, content_name, downloadLocation })
     .then(() => db.setContentSaved(content_url))
     .catch((e) => {
@@ -205,7 +212,8 @@ export async function downloadThumbnail({ thumbnail_url, url: contentUrl, accoun
   }
   if (!content_url) return;
   const content_name = content_url.split('/').pop();
-  const downloadLocation = join(downloadDir, account_name.replace(/\.$/, '._'), 'thumbnail');
+  const downloadLocation = safeJoin(downloadDir, sanitizeFileName(String(account_name).replace(/\.$/, '._'), ''), 'thumbnail');
+  if (!downloadLocation) return;
   return downloadSetup({ content_url, content_name, downloadLocation })
     .then(() => db.setThumbnailSaved(contentUrl, content_url, content_name))
     .catch((e) => {
