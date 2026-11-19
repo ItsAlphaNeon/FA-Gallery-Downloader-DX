@@ -1,34 +1,30 @@
 import getRelativeTime from './relative-time.js';
 
+// One thumbnail, laid out like a <figure> in FA's gallery (section.gallery figure).
 export default {
   name: 'gallery-tile',
   template: `
-    <div class="gallery-tile">
-      <div class="gallery-tile__thumbnail" :class="[classRating]" @click="loadSubmission" :title="altText">
-        <img v-if="isImg" class="gallery-tile__blur-bg" :src="computedImgPath" aria-hidden="true" />
-        <div class="gallery-tile__thumbnail_wrapper">
-          <div v-if="error" class="gallery-tile__thumbnail-other">⚠ ERROR! ⚠<br>Possible<br>corrupt file!</div>
+    <figure :class="['r-' + ratingClass, { 'with-artist': showArtist }]">
+      <b><u>
+        <a href="#" @click.prevent="loadSubmission" :title="title">
+          <div v-if="error" class="gallery-tile__placeholder">⚠ Error!<br>Possibly<br>corrupt file</div>
           <img v-else-if="isImg" :src="computedImgPath" loading="lazy" alt="" @load="onImgLoad" @error="onError"/>
-          <div v-else-if="!is_content_saved" class="gallery-tile__thumbnail-other not-downloaded"><span>File not downloaded!<br>Type: {{fileExtension}}</span></div>
-          <div v-else class="gallery-tile__thumbnail-other file-type"><span>Filetype:<br>{{fileExtension}}</span></div>
-        </div>
-      </div>
-      <div class="gallery-tile__info">
-        <a href="#" class="gallery-tile__title" @click.prevent="loadSubmission" :title="title">{{title}}</a>
-        <div class="gallery-tile__meta">
-          <span class="gallery-tile__user">by <a href="#" @click.prevent="searchUser" :title="userAltText">{{pretty_username}}</a></span>
-          <span class="gallery-tile__date" :title="dateTitle">{{relativeDate}}</span>
-        </div>
-      </div>
-    </div>
+          <div v-else-if="!is_content_saved" class="gallery-tile__placeholder">Not downloaded<br><span>{{fileExtension}}</span></div>
+          <div v-else class="gallery-tile__placeholder file-type"><span>{{fileExtension}}</span></div>
+        </a>
+      </u></b>
+      <figcaption>
+        <p><a href="#" @click.prevent="loadSubmission" :title="title">{{title}}</a></p>
+        <p v-if="showArtist"><i>by</i> <a href="#" @click.prevent="searchUser" :title="pretty_username">{{pretty_username}}</a></p>
+        <p class="gallery-tile__date" :title="dateTitle">{{relativeDate}}</p>
+      </figcaption>
+    </figure>
   `,
-  props: ['id', 'title', 'username', 'pretty_name', 'account_name', 'content_name', 'date_uploaded', 'uploaded_at', 'is_content_saved', 'thumbnail_name', 'is_thumbnail_saved', 'rating'],
+  props: ['id', 'title', 'username', 'pretty_name', 'account_name', 'content_name', 'date_uploaded', 'uploaded_at', 'is_content_saved', 'thumbnail_name', 'is_thumbnail_saved', 'rating', 'showArtist'],
   emits: ['loadSubmission', 'searchUser'],
   data() {
     return {
       contentPath: '',
-      altText: 'View this submission!',
-      userAltText: 'Show only this user',
       error: false,
       isDefaultThumbnail: false,
     };
@@ -58,7 +54,6 @@ export default {
     computedImgPath() {
       const base = this.contentPath;
       const account = this.cleanAccountName;
-      // Use forward slash to join the URL parts
       if (this.thumbnail_name && this.is_thumbnail_saved) {
         return `${base}/${account}/thumbnail/${this.thumbnail_name}`;
       }
@@ -74,8 +69,8 @@ export default {
     dateTitle() {
       return this.uploaded_at ? new Date(this.uploaded_at * 1000).toLocaleString() : this.date_uploaded;
     },
-    classRating() {
-      return this?.rating?.toLowerCase();
+    ratingClass() {
+      return this.rating?.toLowerCase() || 'general';
     }
   },
   methods: {
@@ -89,7 +84,7 @@ export default {
         await this.waitFor();
         return this.onImgLoad({ target: img });
       }
-      this.isDefaultThumbnail = img.clientWidth === 50 && img.clientHeight === 50;
+      this.isDefaultThumbnail = img.naturalWidth === 50 && img.naturalHeight === 50;
     },
     onError() {
       this.error = true;

@@ -1,99 +1,127 @@
 import getRelativeTime from './relative-time.js';
 
+// A single submission, laid out like FA's submission page (image + description on the left,
+// stats / info / keywords sidebar on the right, comments underneath).
 export default {
   name: 'submission-view',
   template: `
-    <div class="submission-view">
-      <nav class="submission-toolbar">
-        <button class="close-btn" @click="close" title="Back to the gallery (Esc)">‹ Back to gallery</button>
-        <div class="submission-toolbar__steps">
-          <button :disabled="!hasPrev" @click="$emit('step', -1)" title="Previous submission (←)">← Prev</button>
-          <button :disabled="!hasNext" @click="$emit('step', 1)" title="Next submission (→)">Next →</button>
-        </div>
-        <div class="submission-toolbar__links">
-          <button class="full-size-btn" :disabled="!isDownloadable" @click="openInNewWindow">View full size</button>
-          <button v-if="submission.url" @click="openOnFa">View on FA ↗</button>
-        </div>
-      </nav>
-      <div class="submission-container">
-        <div class="submission-hero">
-          <div v-if="error" class="download-link" @click="downloadContent">File possibly corrupted!<br>Redownload?</div>
-          <img v-else-if="isImg" :src="computedContentPath" @click.self="openInNewWindow" :alt="altText" :title="altText" @error="error = true" />
-          <object v-else-if="isPDF" class="pdf-embed" :data="computedContentPath" type="application/pdf" @error="error = true"></object>
-          <object v-else-if="isSWF" class="swf-embed" type="application/x-shockwave-flash" :data="computedContentPath" id="applicationID">
-            <param name="movie" :value="computedContentPath" />
-            <param name="wmode" value="transparent" />
-            <param name="FlashVars" value="" />
-            <param name="quality" value="high" />
-            <param name="menu" value="false" />
-          </object>
-          <object v-else-if="isTxt" class="pdf-embed txt" :data="computedContentPath" type="text/plain" @error="error = true"></object>
-          <audio v-else-if="isMusic" class="music-embed" controls :src="computedContentPath" @error="error = true"></audio>
-          <div v-else-if="isDoc" class="download-link" @click="openInNewWindow">Content not embedded. Download to view!</div>
-          <div v-else-if="isUnknown" class="music-embed">Invalid/Blank filetype: "{{submission.content_name}}"<br>This file cannot be displayed or downloaded, due to it's missing filetype</div>
-          <div v-else-if="isMissing" class="music-embed">Content missing: "{{submission.content_name}}"<br>This file cannot be downloaded, as it is missing on FA</div>
-          <div v-else-if="isDownloadable" class="music-embed">Content: "{{submission.content_name}}" not displayable</div>
-          <div v-else class="download-link" @click="downloadContent">Content not downloaded!<br>Download now?</div>
-        </div>
-        <aside class="submission-metadata">
-          <div class="submission-info__header">
-            <div class="submission-info__user-icon">
-              <img :src="getCleanUserImg(submission.username)" @error="fixIcon" alt=""/>
+    <div class="submission-view" id="submission_page">
+      <div class="content-with-sidebar">
+        <div class="content">
+          <div class="submission-area">
+            <div v-if="error" class="download-link" @click="downloadContent">File possibly corrupted!<br>Redownload?</div>
+            <img v-else-if="isImg" id="submissionImg" :src="computedContentPath" @click.self="openInNewWindow" :title="altText" @error="error = true" />
+            <object v-else-if="isPDF" class="pdf-embed" :data="computedContentPath" type="application/pdf" @error="error = true"></object>
+            <object v-else-if="isSWF" class="swf-embed" type="application/x-shockwave-flash" :data="computedContentPath" id="applicationID">
+              <param name="movie" :value="computedContentPath" />
+              <param name="wmode" value="transparent" />
+              <param name="FlashVars" value="" />
+              <param name="quality" value="high" />
+              <param name="menu" value="false" />
+            </object>
+            <object v-else-if="isTxt" class="pdf-embed txt" :data="computedContentPath" type="text/plain" @error="error = true"></object>
+            <audio v-else-if="isMusic" class="music-embed" controls :src="computedContentPath" @error="error = true"></audio>
+            <div v-else-if="isDoc" class="download-link" @click="openInNewWindow">Content not embedded. Download to view!</div>
+            <div v-else-if="isUnknown" class="music-embed">Invalid/Blank filetype: "{{submission.content_name}}"<br>This file cannot be displayed or downloaded, due to it's missing filetype</div>
+            <div v-else-if="isMissing" class="music-embed">Content missing: "{{submission.content_name}}"<br>This file cannot be downloaded, as it is missing on FA</div>
+            <div v-else-if="isDownloadable" class="music-embed">Content: "{{submission.content_name}}" not displayable</div>
+            <div v-else class="download-link" @click="downloadContent">Content not downloaded!<br>Download now?</div>
+          </div>
+
+          <div class="submission-options button-row">
+            <button class="button" :disabled="!isDownloadable" @click="openInNewWindow">Full Size</button>
+            <button class="button" @click="downloadContent">{{submission.is_content_saved ? 'Re-download' : 'Download'}}</button>
+            <button v-if="submission.url" class="button" @click="openOnFa">View on FA</button>
+          </div>
+
+          <div class="minigallery-navigation">
+            <a v-if="hasPrev" href="#" class="minigallery-navigation__step" @click.prevent="$emit('step', -1)" title="Previous submission (←)">« Prev</a>
+            <span v-else class="minigallery-navigation__step"></span>
+            <a href="#" class="minigallery-navigation__box" @click.prevent="close" title="Back to the gallery (Esc)">
+              <b class="highlight">{{galleryLabel}}</b>
+              <i>Back to gallery</i>
+            </a>
+            <a v-if="hasNext" href="#" class="minigallery-navigation__step" @click.prevent="$emit('step', 1)" title="Next submission (→)">Next »</a>
+            <span v-else class="minigallery-navigation__step"></span>
+          </div>
+
+          <section class="submission-description">
+            <div class="section-header submission-description-header">
+              <a href="#" class="submission-description-artist" @click.prevent="$emit('searchUser', submission.username)" title="Show this artist's gallery">
+                <img class="submission-user-icon" :src="getCleanUserImg(submission.username)" @error="fixIcon" alt=""/>
+              </a>
+              <div>
+                <div class="submission-title"><h2>{{submission.title}}</h2></div>
+                <div>
+                  by <a href="#" class="c-usernameBlockSimple" @click.prevent="$emit('searchUser', submission.username)">{{submission.pretty_username || submission.username}}</a>
+                </div>
+                <div>Posted <span class="popup_date" :title="dateUploaded">{{relativeDate}}</span></div>
+              </div>
             </div>
-            <div>
-              <h2 class="submission-info__title">{{submission.title}}</h2>
-              <div class="submission-info__user">
-                by <a href="#" @click.prevent="$emit('searchUser', submission.username)" title="Show only this user">{{submission.pretty_username || submission.username}}</a>
+            <div class="section-body">
+              <div class="submission-description-text user-submitted-links" v-html="cleanDesc" @click="possibleOpen"></div>
+            </div>
+          </section>
+
+          <div class="comments-list">
+            <div v-for="comment in comments" :key="comment.id" class="comment_container" :style="comment.width">
+              <div class="comment-container">
+                <div class="avatar"><img class="comment_useravatar" :src="getCleanUserImg(comment.username)" @error="fixIcon" alt="" /></div>
+                <div class="comment-content">
+                  <div class="comment-username">
+                    <span class="c-usernameBlock__displayName">{{getCleanUsername(comment.username)}}</span>
+                    <span class="c-usernameBlock__userName">~{{comment.account_name || comment.username}}</span>
+                  </div>
+                  <div class="comment-date font-small"><span class="popup_date" :title="getCommentTitle(comment)">{{getCommentDate(comment)}}</span></div>
+                  <div v-if="comment.subtitle" class="comment-title font-small">{{comment.subtitle}}</div>
+                  <div class="comment-user-text" v-html="getCleanDesc(comment.desc)" @click="possibleOpen"></div>
+                </div>
               </div>
             </div>
           </div>
-          <dl class="submission-metadata__info">
-            <dt>Uploaded</dt>
-            <dd :title="dateUploaded">{{relativeDate}}<br><small>{{dateUploaded}}</small></dd>
-            <dt>Rating</dt>
-            <dd><span class="rating-badge" :class="[cleanRating]">{{submission.rating || '[Missing]'}}</span></dd>
-            <dt>Category</dt>
-            <dd>{{submission.category || '[Missing]'}}</dd>
-            <dt>File</dt>
-            <dd class="submission-metadata__file" :title="submission.content_name">{{submission.content_name}}</dd>
+        </div>
+
+        <div class="sidebar submission-sidebar">
+          <div class="stats-box submission-page-stats">
+            <div><div>{{comments?.length || 0}}</div><div class="highlight">Comments</div></div>
+            <div><div>{{fileExtension.toUpperCase() || '?'}}</div><div class="highlight">File type</div></div>
+            <div><div :class="'rating-text ' + cleanRating">{{submission.rating || '?'}}</div><div class="highlight">Rating</div></div>
+          </div>
+
+          <div class="button-row">
+            <button class="button" @click="close" title="Back to the gallery (Esc)">Back</button>
+            <button class="button" :disabled="!hasPrev" @click="$emit('step', -1)" title="Previous submission (←)">« Prev</button>
+            <button class="button" :disabled="!hasNext" @click="$emit('step', 1)" title="Next submission (→)">Next »</button>
+          </div>
+
+          <dl class="info-table submission-content-stats">
+            <dt>Category</dt><dd>{{submission.category || '-'}}</dd>
+            <dt>Posted</dt><dd :title="dateUploaded">{{dateUploaded}}</dd>
+            <dt>Artist</dt><dd>{{submission.pretty_username || submission.username}}</dd>
+            <dt>File</dt><dd :title="submission.content_name">{{submission.content_name}}</dd>
           </dl>
-          <h3>Tags</h3>
-          <ul v-if="cleanTags.length" class="submission-metadata__tags">
-            <li v-for="tag in cleanTags" :key="tag">
-              <a href="#" @click.prevent="$emit('searchTag', tag)" title="Search for this tag">{{tag}}</a>
-            </li>
-          </ul>
-          <div v-else class="muted">No tags</div>
-        </aside>
-        <section class="submission-info">
-          <div class="submission-info__desc" v-html="cleanDesc" @click="possibleOpen"></div>
-        </section>
-      </div>
-      <section class="comments-section">
-        <div class="comments-header">
-          <h3>Comments <span class="count">{{comments?.length || 0}}</span></h3>
-          <button class="download-comments" :disabled="downloadingComments" @click="downloadComments">
-            {{downloadingComments ? 'Downloading...' : comments?.length ? 'Refresh comments' : 'Download comments'}}
-          </button>
-        </div>
-        <p v-if="!comments?.length" class="muted">No comments saved for this submission.</p>
-        <div class="comment-container">
-          <div v-for="comment in comments" :key="comment.id" class="comment" :style="comment.width">
-            <div class="comment-icon"><img :src="getCleanUserImg(comment.username)" @error="fixIcon" alt="" /></div>
-            <div class="comment-header">
-              <div class="comment-user">
-                {{getCleanUsername(comment.username)}}
-                <span :title="getCommentTitle(comment)">{{getCommentDate(comment)}}</span>
-              </div>
-              <div class="comment-subtitle">{{comment.subtitle}}</div>
+
+          <div class="submission-tags">
+            <div class="sidebar-heading">Keywords</div>
+            <div v-if="cleanTags.length" class="tags-list">
+              <span v-for="tag in cleanTags" :key="tag" class="tags"><span class="tag-block">+</span><a href="#" @click.prevent="$emit('searchTag', tag)" title="Search for this keyword">{{tag}}</a></span>
             </div>
-            <div class="comment-desc" v-html="getCleanDesc(comment.desc)" @click="possibleOpen"></div>
+            <div v-else class="font-small sidebar-empty">No keywords</div>
+          </div>
+
+          <div class="submission-comment-options">
+            <div class="sidebar-heading">Comments</div>
+            <div class="button-row">
+              <button class="button" :disabled="downloadingComments" @click="downloadComments">
+                {{downloadingComments ? 'Downloading...' : comments?.length ? 'Refresh Comments' : 'Download Comments'}}
+              </button>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
     </div>
   `,
-  props: ['submission', 'comments', 'hasPrev', 'hasNext'],
+  props: ['submission', 'comments', 'hasPrev', 'hasNext', 'galleryLabel'],
   emits: ['clearSubmission', 'downloadComments', 'downloadContent', 'step', 'searchUser', 'searchTag'],
   data() {
     return {
@@ -172,7 +200,7 @@ export default {
       return `${this.contentPath}\\${this.cleanAccountName}\\${this.submission.content_name}`;
     },
     fileExtension() {
-      return this.submission.content_name.split('.').pop();
+      return this.submission.content_name?.split('.').pop() || '';
     },
     relativeDate() {
       const { uploaded_at, date_uploaded } = this.submission;
@@ -186,7 +214,7 @@ export default {
       return this.getCleanDesc(this.submission.desc);
     },
     cleanTags() {
-      return this.submission.tags?.split(',') || [];
+      return this.submission.tags?.split(',').filter(Boolean) || [];
     },
     cleanRating() {
       return this.submission.rating?.toLowerCase() || '';

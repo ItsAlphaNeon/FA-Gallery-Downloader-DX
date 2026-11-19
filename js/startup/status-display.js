@@ -2,8 +2,9 @@ export default {
   name: 'status-display',
   template: `
     <div class="status-container">
-      <section class="panel progress-panel">
-        <h3 class="panel__title">Progress</h3>
+      <section class="progress-panel">
+        <div class="section-header"><h2>Progress</h2></div>
+        <div class="section-body">
         <div class="progress-row">
           <label for="data-progress-bar">Data</label>
           <progress id="data-progress-bar" :value="data.value" :max="data.max"></progress>
@@ -14,14 +15,15 @@ export default {
           <progress id="file-progress-bar" :value="file.value" :max="file.max"></progress>
           <span class="progress-desc">{{file.value ? Math.round(file.value / file.max * 100) + '%' : ''}}</span>
         </div>
-        <div class="progress-filename" :title="filename">{{filename}}</div>
-      </section>
-      <section class="panel log-panel">
-        <div class="log-panel__header">
-          <h3 class="panel__title">Status log <span class="hint">(newest first)</span></h3>
-          <button type="button" class="small" :disabled="!msgs.length" @click="msgs = []">Clear</button>
+        <div class="progress-filename font-small" :title="filename">{{filename}}</div>
         </div>
-        <div id="status">
+      </section>
+      <section class="log-panel">
+        <div class="section-header log-panel__header">
+          <h2>Status log <span class="font-small">(newest first)</span></h2>
+          <button type="button" class="button" :disabled="!msgs.length" @click="msgs = []">Clear</button>
+        </div>
+        <div id="status" class="section-body">
           <p v-if="!msgs.length" class="hint">Nothing yet. Start a download and progress will show up here.</p>
           <p v-for="(msg, index) in reversedMsgs" :key="msgs.length - index">{{msg.text}}</p>
         </div>

@@ -6,25 +6,25 @@ export default {
   components: { statusDisplay, startupForm },
   template: `
     <div class="startup-container">
-      <header class="startup-header">
-        <div class="startup-title">
-          <h2>🐾 FA Gallery Downloader DX 🐾</h2>
-          <div class="credits">by SpottedSqueak, maintained by AlphaNeon</div>
-        </div>
+      <nav class="fa-menubar startup-header">
+        <span class="fa-menubar__brand">🐾 FA Gallery Downloader DX</span>
+        <button class="fa-menubar__item" @click="sendEvent('view-gallery')">Gallery</button>
+        <a class="fa-menubar__item" :href="githubLink" @click.prevent="open">Releases</a>
+        <span class="fa-menubar__spacer"></span>
         <div class="logged-in-status" :class="{ 'logged-out': !username }">
-          <div class="logged-in-status__text">
-            <template v-if="username">Logged in as <span>{{username}}</span></template>
+          <span class="logged-in-status__text">
+            <template v-if="username">Logged in as <b>{{username}}</b></template>
             <template v-else>Not logged in</template>
-          </div>
-          <div class="user-icon">
-            <img v-if="iconSrc" :src="iconSrc" @error="fixIcon" alt=""/>
-          </div>
-          <button class="small" @click="sendEvent('login')">{{username ? 'Switch account' : 'Log in'}}</button>
+          </span>
+          <button class="fa-menubar__item" @click="sendEvent('login')">{{username ? 'Switch account' : 'Log in'}}</button>
+          <img v-if="iconSrc" class="fa-menubar__avatar" :src="iconSrc" @error="fixIcon" alt=""/>
         </div>
-      </header>
-      <startup-form :is-logged-in="!!username" :outsideUsername="queryName" :outsideActive="isActive" :accounts="accounts" :download-accounts="downloadAccounts" @send-data="sendFormData" @send-event="sendEvent"></startup-form>
-      <status-display :msg="msg" :log-progress="logProgress" :is-active="isActive" @clear-msg="clearMsg"></status-display>
-      <footer class="version">
+      </nav>
+      <startup-form :is-logged-in="!!username" :outsideUsername="queryName" :outsideActive="isActive" :accounts="accounts" :download-accounts="downloadAccounts" @send-data="sendFormData" @send-event="sendEvent">
+        <status-display :msg="msg" :log-progress="logProgress" :is-active="isActive" @clear-msg="clearMsg"></status-display>
+      </startup-form>
+      <footer class="fa-footer version">
+        <div class="credits">FA Gallery Downloader DX | originally by SpottedSqueak, maintained by AlphaNeon | Not affiliated with Fur Affinity</div>
         <span v-if="!version">Loading version...</span>
         <template v-else>
           <template v-if="hasUpdate">
