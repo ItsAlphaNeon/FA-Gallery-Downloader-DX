@@ -12,10 +12,12 @@
     "lint": "eslint js --ext .js",
     "lint:fix": "eslint js --fix --ext .js",
     "lint:init": "eslint --init",
-    "test": "npm run lint:fix",
+    "test": "node --test \"test/**/*.test.js\"",
     "build": "npm ci && npx package",
     "build-linux": "npm ci && npx package && node -e \"const fs=require('fs');const v=require('./package.json').version;fs.renameSync('../FA-Gallery-Downloader-DX.tar.gz','./fa-gallery-downloader-dx-v'+v+'.tar.gz')\"",
-    "build-windows": "npm ci && npx package && node -e \"const fs=require('fs');const v=require('./package.json').version;fs.renameSync('../FA-Gallery-Downloader-DX.zip','./fa-gallery-downloader-dx-v'+v+'.zip')\""
+    "build-windows": "npm ci && npx package && node -e \"const fs=require('fs');const v=require('./package.json').version;fs.renameSync('../FA-Gallery-Downloader-DX.zip','./fa-gallery-downloader-dx-v'+v+'.zip')\"",
+    "check": "npm run lint && npm test",
+    "check:fa": "node scripts/check-fa.mjs"
   },
   "dependencies": {
     "@puppeteer/browsers": "^2.2.3",

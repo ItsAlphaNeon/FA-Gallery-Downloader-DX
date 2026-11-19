@@ -66,6 +66,23 @@ export async function ensureUserProfile(username) {
 }
 
 /**
+ * Collects the submission links on a gallery/scraps/favorites page.
+ * @param {Cheerio} $
+ * @returns {String[]} Absolute submission URLs
+ */
+export function parseGalleryLinks($) {
+  return Array.from($('figcaption a[href^="/view"]'))
+    .map((a) => FA_URL_BASE + a.attribs.href);
+}
+/**
+ * Finds the "Next" page of a favorites listing (favorites paginate with a form, not page numbers).
+ * @returns {String|undefined} Absolute URL of the next page, if there is one
+ */
+export function parseFavoritesNextPage($, url) {
+  const action = $(`form[action$="next"]`).attr('action');
+  return action ? url.split('/favorite')[0] + action : undefined;
+}
+/**
  * Walks the user's gallery in order to gather all submission links for future download.
  * @param {String} url Gallery URL
  * @param {Boolean} isScraps Is this the scraps folder or not?
@@ -96,8 +113,7 @@ export async function getSubmissionLinks({ url, username, userUuid = null, isScr
     }
     retryCount = 0;
     // Check for content
-    let newLinks = Array.from($('figcaption a[href^="/view"]'))
-      .map((div) => FA_URL_BASE + div.attribs.href);
+    let newLinks = parseGalleryLinks($);
     if (!newLinks.length) {
       // console.log(`[Data] Found ${currPageCount} pages of submissions!`, divID);
       break;
@@ -112,9 +128,8 @@ export async function getSubmissionLinks({ url, username, userUuid = null, isScr
     currLinks = currLinks += newLinks.length;
     currPageCount++;
     if (isFavorites) {
-      nextPage = $(`form[action$="next"]`).attr('action');
-      if (nextPage) nextPage = url.split('/favorite')[0] + nextPage;
-      else break;
+      nextPage = parseFavoritesNextPage($, url);
+      if (!nextPage) break;
     }
     await waitFor(random.int(1000, 2500));
   }
@@ -145,7 +160,29 @@ export async function scrapeComments($, submission_id, url) {
     }
     break;
   } while (!$);
-  const comments = Array.from($('#comments-submission .comment_container'))
+  const comments = parseComments($, submission_id);
+  if(!comments.length) return;
+  return db.saveComments(comments);
+}
+/**
+ * Gets the commenter's login name. The <comment-username> text holds the display name AND "~login"
+ * (with a lot of whitespace), so read the dedicated link instead.
+ */
+function parseCommentUsername($, $div) {
+  const link = $div.find('.c-usernameBlock__userName').first();
+  const fromHref = link.attr('href')?.split('/user/')[1]?.replace(/\/$/, '');
+  if (fromHref) return fromHref;
+  const text = link.text().replace('~', '').trim();
+  return text || $div.find('comment-username').text().replace(/\s+/g, ' ').trim();
+}
+/**
+ * Parses all comments on a submission page.
+ * @param {Cheerio} $
+ * @param {String} submission_id
+ * @returns {Object[]}
+ */
+export function parseComments($, submission_id) {
+  return Array.from($('#comments-submission .comment_container'))
     .map((val) => {
       const $div = $(val);
       const isDeleted = $div.find('comment-container').hasClass('deleted-comment-container');
@@ -155,7 +192,7 @@ export async function scrapeComments($, submission_id, url) {
         if (/ago/i.test(date)) date = $div.find('comment-date > span').text().trim();
       }
       const posted_at = isDeleted ? null : (Number($div.find('comment-date .popup_date').attr('data-time')) || null);
-      const username = isDeleted ? '' : $div.find('comment-username').text().trim();
+      const username = isDeleted ? '' : parseCommentUsername($, $div);
       return {
         id: $div.find('.comment_anchor').attr('id'),
         submission_id,
@@ -168,8 +205,6 @@ export async function scrapeComments($, submission_id, url) {
         posted_at,
       }
     });
-  if(!comments.length) return;
-  return db.saveComments(comments);
 }
 const metadataID = 'scrape-metadata';
 /**

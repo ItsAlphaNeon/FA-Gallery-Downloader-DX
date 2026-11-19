@@ -146,6 +146,15 @@ export async function upgradeDatabase(db) {
       await db.exec(`ALTER TABLE subdata ADD COLUMN uploaded_at INTEGER`).catch(() => {});
       await db.exec(`ALTER TABLE commentdata ADD COLUMN posted_at INTEGER`).catch(() => {});
       version = 15;
+    case 15: {
+      // Comment usernames were saved as "Display Name   ~login" with embedded whitespace. Keep just the login.
+      const rows = await db.all(`SELECT id, username FROM commentdata WHERE username LIKE '%' || char(10) || '%'`);
+      for (const { id, username } of rows) {
+        const name = username.match(/~\s*(\S+)\s*$/)?.[1] || username.trim().split(/\s+/)[0];
+        await db.run('UPDATE commentdata SET username = ?, account_name = ? WHERE id = ?', name, name.replace(/_/g, ''), id);
+      }
+      version = 16;
+    }
 
     default:
       await db.exec(`VACUUM`);
