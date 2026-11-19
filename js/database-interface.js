@@ -86,7 +86,7 @@ export function setThumbnailSaved(url, thumbnail_url, thumbnail_name) {
 }
 const METADATA_COLUMNS = new Set([
   'id', 'title', 'username', 'account_name', 'pretty_username', 'desc', 'tags', 'content_name',
-  'content_url', 'date_uploaded', 'thumbnail_url', 'rating', 'category',
+  'content_url', 'date_uploaded', 'uploaded_at', 'thumbnail_url', 'rating', 'category',
 ]);
 /**
  * Takes the given data for the given url and updates the appropriate database columns.
@@ -139,6 +139,7 @@ export function saveComments(comments) {
       c.desc,
       c.subtitle,
       c.date,
+      c.posted_at ?? null,
     ];
     let marks = `(${data.map(()=>'?').join(',')})`;
     acc.push(...data);
@@ -155,12 +156,14 @@ export function saveComments(comments) {
     account_name,
     desc,
     subtitle,
-    date
+    date,
+    posted_at
   ) 
   VALUES ${placeholder}
   ON CONFLICT(id) DO UPDATE SET
     desc = excluded.desc,
-    date = excluded.date
+    date = excluded.date,
+    posted_at = excluded.posted_at
   `, ...data);
 }
 /**
@@ -346,6 +349,7 @@ export function getGalleryPage(offset = 0, count = 25, query = {}, sortOrder ='D
     content_name,
     content_url,
     date_uploaded,
+    uploaded_at,
     is_content_saved,
     thumbnail_name,
     is_thumbnail_saved,
@@ -450,10 +454,11 @@ export function needsRepair(username) {
     OR rating IS NULL
     OR category IS NULL
     OR date_uploaded LIKE '%ago%'
+    OR uploaded_at IS NULL
     OR id IN (
       SELECT submission_id
       FROM commentdata
-      WHERE date LIKE '%ago%'
+      WHERE date LIKE '%ago%' OR posted_at IS NULL
     )
   )
   `, ...params);

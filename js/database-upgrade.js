@@ -141,6 +141,11 @@ export async function upgradeDatabase(db) {
       await db.exec(`ALTER TABLE favorites ADD COLUMN user_uuid TEXT`).catch(() => {});
       await db.exec(`CREATE INDEX IF NOT EXISTS idx_subdata_user_uuid ON subdata(user_uuid)`);
       version = 14;
+    case 14:
+      // FA renders dates as text in a timezone that varies by session; store the real epoch too.
+      await db.exec(`ALTER TABLE subdata ADD COLUMN uploaded_at INTEGER`).catch(() => {});
+      await db.exec(`ALTER TABLE commentdata ADD COLUMN posted_at INTEGER`).catch(() => {});
+      version = 15;
 
     default:
       await db.exec(`VACUUM`);

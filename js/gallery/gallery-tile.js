@@ -16,11 +16,11 @@ export default {
       <div class="gallery-tile__info">
         <div class="gallery-tile__title" @click="loadSubmission" :alt="altText" :title="altText">{{title}}</div>
         <div class="gallery-tile__user">by <span @click="searchUser" :alt="userAltText" :title="userAltText">{{pretty_username}}</span></div>
-        <div class="gallery-tile__date" :title="date_uploaded" :alt="date_uploaded">Uploaded: {{relativeDate}}</div>
+        <div class="gallery-tile__date" :title="dateTitle" :alt="dateTitle">Uploaded: {{relativeDate}}</div>
       </div>
     </div>
   `,
-  props: ['id', 'title', 'username', 'pretty_name', 'account_name', 'content_name', 'date_uploaded', 'is_content_saved', 'thumbnail_name', 'is_thumbnail_saved', 'rating'],
+  props: ['id', 'title', 'username', 'pretty_name', 'account_name', 'content_name', 'date_uploaded', 'uploaded_at', 'is_content_saved', 'thumbnail_name', 'is_thumbnail_saved', 'rating'],
   emits: ['loadSubmission', 'searchUser'],
   data() {
     return {
@@ -67,7 +67,10 @@ export default {
       return fileExtension ? fileExtension : '???';
     },
     relativeDate() {
-      return getRelativeTime(+new Date(this.date_uploaded));
+      return getRelativeTime(this.uploaded_at ? this.uploaded_at * 1000 : +new Date(this.date_uploaded));
+    },
+    dateTitle() {
+      return this.uploaded_at ? new Date(this.uploaded_at * 1000).toLocaleString() : this.date_uploaded;
     },
     classRating() {
       return this?.rating?.toLowerCase();

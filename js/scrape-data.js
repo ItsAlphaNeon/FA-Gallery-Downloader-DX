@@ -154,6 +154,7 @@ export async function scrapeComments($, submission_id, url) {
         date = $div.find('comment-date > span').attr('title').trim();
         if (/ago/i.test(date)) date = $div.find('comment-date > span').text().trim();
       }
+      const posted_at = isDeleted ? null : (Number($div.find('comment-date .popup_date').attr('data-time')) || null);
       const username = isDeleted ? '' : $div.find('comment-username').text().trim();
       return {
         id: $div.find('.comment_anchor').attr('id'),
@@ -164,6 +165,7 @@ export async function scrapeComments($, submission_id, url) {
         desc: isDeleted ? '' : $div.find('comment-user-text .user-submitted-links').html().trim(),
         subtitle: isDeleted ? '' : $div.find('comment-title').text().trim(),
         date,
+        posted_at,
       }
     });
   if(!comments.length) return;
@@ -241,6 +243,8 @@ export function processSubmissionHTML($, url) { // Seperated from scrapeSubmissi
   } catch (e) {
     console.log('[Warn] Could not parse date, FA UI may have changed');
   }
+
+  const uploaded_at = Number($('.popup_date').first().attr('data-time')) || null;
 
   let prettyUsername = '';
   try {
@@ -331,6 +335,7 @@ export function processSubmissionHTML($, url) { // Seperated from scrapeSubmissi
     content_name,
     content_url,
     date_uploaded: date,
+    uploaded_at,
     thumbnail_url,
     rating,
     category,

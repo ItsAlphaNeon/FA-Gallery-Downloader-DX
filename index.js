@@ -110,7 +110,16 @@ async function init() {
     if (name !== '__userPathBinding') return;
     const data = JSON.parse(payload);
     const { choice } = data;
-    stop.reset();
+    // Only starting new work clears a stop request. Any other click must not, or it would
+    // un-stop a job that is still winding down (and let it carry on running).
+    if (choice === 'start-download' || choice === 'repair') {
+      if (inProgress) {
+        return console.log(stop.now
+          ? '[Data] Still stopping the previous job, please try again in a moment.'
+          : '[Data] Program already running!');
+      }
+      stop.reset();
+    }
     if (choice === 'login') {
       if (!await isSiteActive()) return console.log(FA_DOWN);
       if (!await checkIfLoggedIn(browser)) await handleLogin();
