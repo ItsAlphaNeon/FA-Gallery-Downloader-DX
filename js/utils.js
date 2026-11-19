@@ -6,8 +6,9 @@ import { fileURLToPath } from 'url';
 import fs from 'fs-extra';
 import * as db from './database-interface.js';
 import { exitCode, default as process, platform } from 'node:process';
-import { FA_URL_BASE, RELEASE_CHECK, LOG_DIR as logDir } from './constants.js';
+import { FA_URL_BASE, RELEASE_API, LOG_DIR as logDir } from './constants.js';
 import { isFaUrl } from './sanitize.js';
+import { parseVersion } from './version.js';
 /** @import { CheerioAPI } from 'cheerio' */
 
 export const isWindows = platform === 'win32';
@@ -164,11 +165,15 @@ export function getHTML(url, sendHeaders = true) {
  */
 export async function releaseCheck() {
   const data = { current: getVersion() };
-  let $ = await getHTML(RELEASE_CHECK, false).catch(() => false);
-  if ($) {
-    const latest = $('a.Link--primary').first().text().replace('v', '');
-    data.latest = latest;
-  }
+  // releases/latest only ever returns the newest published, non-prerelease release, so drafts and
+  // test builds (e.g. v2.8.0.m) never show up as an update.
+  const release = await got(RELEASE_API, {
+    headers: { accept: 'application/vnd.github+json', 'user-agent': 'FA-Gallery-Downloader-DX' },
+    timeout: { request: 10000 },
+    retry: { limit: 1 },
+  }).json().catch(() => null);
+  const latest = parseVersion(release?.tag_name);
+  if (latest) data.latest = latest.join('.');
   return data;
 }
 export async function urlExists(url, sendHeaders = true) {

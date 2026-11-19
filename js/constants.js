@@ -26,5 +26,6 @@ export const DOWNLOAD_DIR = './fa_gallery_downloader/downloaded_content';
 export const EXPORT_DIR = './fa_gallery_downloader/exports';
 export const DB_LOCATION = './fa_gallery_downloader/databases/fa-gallery-downloader.db';
 export const RELEASE_CHECK = 'https://github.com/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases';
+export const RELEASE_API = 'https://api.github.com/repos/ItsAlphaNeon/FA-Gallery-Downloader-DX/releases/latest';
 
 export const FA_DOWN = `[Warn] FA appears to be down, try again later`;

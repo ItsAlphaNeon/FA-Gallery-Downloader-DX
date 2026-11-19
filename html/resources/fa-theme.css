@@ -1,0 +1,336 @@
+/*
+ * Shared look for the app's pages, modelled on FurAffinity's modern dark theme so the viewer feels
+ * like browsing FA itself. Values (colours, sizes, paddings) were measured from furaffinity.net.
+ */
+:root {
+  --fa-bg: #1b1b1d;
+  --fa-text: rgba(255, 255, 255, 0.92);
+  --fa-text-dim: rgba(255, 255, 255, 0.84);
+  --fa-link: #cfcfcf;
+  --fa-highlight: #add8f5;
+  --fa-section-border: #69697d;
+  --fa-section-header: #20242a;
+  --fa-section-body: #353b45;
+  --fa-sidebar: #20242a;
+  --fa-stat-box: #363d47;
+  --fa-button: #434b5b;
+  --fa-button-hover: #576175;
+  --fa-tag: #434b5b;
+  --fa-tag-text: #e3e2e2;
+  --fa-tag-block: #d29504;
+  --fa-menubar: rgba(20, 20, 20, 0.64);
+  --fa-footer: #121316;
+  --fa-red: #7a1a1a;
+  --fa-general: #333333;
+  --fa-general-shadow: #2a2a2a;
+  --fa-mature: #697cc1;
+  --fa-mature-shadow: #394c91;
+  --fa-adult: #971c1c;
+  --fa-adult-shadow: #872c2c;
+}
+
+* {
+  box-sizing: border-box;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  min-width: 320px;
+  max-width: 1850px;
+  margin: 0 auto;
+  background: var(--fa-bg);
+  color: var(--fa-text);
+  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+}
+h1, h2, h3, h4, p, ul, dl, dd, dt {
+  margin: 0;
+  padding: 0;
+}
+h2 {
+  font-size: 22px;
+  line-height: 32px;
+  font-weight: 400;
+  color: var(--fa-highlight);
+}
+a, a:visited, .linklike {
+  color: var(--fa-link);
+  text-decoration: none;
+  cursor: pointer;
+}
+a:hover, .linklike:hover {
+  text-decoration: underline;
+}
+img {
+  max-width: 100%;
+  height: auto;
+}
+.highlight, .highlight a {
+  color: var(--fa-highlight) !important;
+}
+.font-small {
+  font-size: 12px;
+  color: var(--fa-text-dim);
+}
+.popup_date {
+  cursor: help;
+  text-decoration: underline dotted rgba(204, 204, 204, 0.92);
+}
+
+/* Buttons and form controls */
+.button, button {
+  display: inline-block;
+  min-width: 50px;
+  padding: 7px 9px;
+  border: 1px solid var(--fa-section-border);
+  border-radius: 0;
+  background: var(--fa-button);
+  color: var(--fa-text) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  text-align: center;
+  vertical-align: bottom;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.button:hover:not(:disabled), button:hover:not(:disabled) {
+  background: var(--fa-button-hover);
+  text-decoration: none;
+}
+.button:disabled, button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.button.red {
+  background: var(--fa-red);
+}
+.button:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--fa-highlight);
+  outline-offset: 1px;
+}
+.textbox, input[type="text"], input[type="search"], select {
+  padding: 6px 8px;
+  border: 1px solid var(--fa-section-border);
+  border-radius: 0;
+  background: var(--fa-bg);
+  color: var(--fa-text);
+  font: inherit;
+  min-width: 0;
+}
+
+/* Top menu bar (FA's #ddmenu) */
+.fa-menubar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 51px;
+  padding: 0 12px;
+  background: var(--fa-menubar);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 0 #00000080;
+}
+.fa-menubar__brand {
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--fa-text) !important;
+  margin-right: 12px;
+  white-space: nowrap;
+}
+.fa-menubar__item {
+  display: inline-flex;
+  align-items: center;
+  height: 51px;
+  padding: 0 10px;
+  color: var(--fa-text) !important;
+  font-size: 15px;
+  white-space: nowrap;
+  background: none;
+  border: none;
+}
+.fa-menubar__item:hover:not(:disabled) {
+  background: #ffffff10;
+  text-decoration: none;
+}
+.fa-menubar__item.current {
+  color: var(--fa-highlight) !important;
+}
+.fa-menubar__search {
+  display: flex;
+  align-items: center;
+  height: 51px;
+  padding: 0 10px;
+  background: #ffffff10;
+}
+.fa-menubar__search input {
+  width: 220px;
+  border: none;
+  background: transparent;
+  padding: 6px 4px;
+}
+.fa-menubar__search input::placeholder {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8a8a8a;
+}
+.fa-menubar__spacer {
+  flex: 1;
+}
+.fa-menubar__avatar {
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+  margin-left: 6px;
+}
+
+/* Sections: bordered box with a dark header and a lighter body */
+section, .section {
+  margin: 10px;
+  border: 1px solid var(--fa-section-border);
+}
+.section-header {
+  padding: 5px 10px;
+  background: var(--fa-section-header);
+}
+.section-header h2, .section-header h3 {
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 400;
+  color: var(--fa-highlight);
+}
+.section-body {
+  padding: 5px 10px 10px;
+  background: var(--fa-section-body);
+}
+.section-footer {
+  padding: 5px 10px;
+  background: var(--fa-section-header);
+}
+
+/* Page with a right sidebar (FA's .content-with-sidebar / #columnpage) */
+.content-with-sidebar {
+  display: flex;
+  flex-flow: row;
+  align-items: stretch;
+}
+.content-with-sidebar > .content {
+  flex: 1;
+  min-width: 0;
+}
+.content-with-sidebar > .sidebar {
+  flex: 0 0 360px;
+  padding: 10px;
+  background: var(--fa-sidebar);
+  display: flex;
+  flex-flow: column;
+  gap: 15px;
+}
+.sidebar--plain {
+  background: transparent !important;
+}
+
+/* Sidebar headings and stat boxes (FA submission sidebar) */
+.sidebar-heading {
+  padding: 5px 8px;
+  margin-bottom: 3px;
+  background: var(--fa-stat-box);
+  color: var(--fa-highlight);
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+.stats-box {
+  display: flex;
+  justify-content: space-evenly;
+  padding: 6px 0;
+  background: var(--fa-stat-box);
+}
+.stats-box > div {
+  text-align: center;
+}
+.stats-box > div > div:first-child {
+  font-weight: 700;
+}
+.stats-box .highlight {
+  font-size: 12px;
+}
+.info-table {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 5px;
+  margin: 0 10px;
+}
+.info-table > dt, .info-table > dd {
+  padding: 5px 8px;
+  background: var(--fa-stat-box);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.info-table > dt {
+  text-align: right;
+  font-weight: 700;
+  color: var(--fa-highlight);
+}
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Keywords (FA .tags with the yellow "+" block) */
+.tags-list {
+  line-height: 1;
+}
+.tags {
+  display: inline-block;
+  margin: 8px 4px 0 0;
+  background: var(--fa-tag);
+  color: var(--fa-tag-text) !important;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.tags .tag-block {
+  display: inline-block;
+  padding: 4px 8px;
+  background: var(--fa-tag-block);
+  font-family: "Courier New", monospace;
+  color: var(--fa-link);
+}
+.tags a {
+  display: inline-block;
+  padding: 3px 9px;
+  color: var(--fa-tag-text) !important;
+}
+
+/* Footer */
+.fa-footer {
+  padding: 14px 10px;
+  margin-top: 20px;
+  border-top: 1px solid #000;
+  background: var(--fa-footer);
+  box-shadow: inset 0 166px 199px -33px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  font-size: 13px;
+}
+
+@media (max-width: 1000px) {
+  .content-with-sidebar {
+    flex-flow: column;
+  }
+  .content-with-sidebar > .sidebar {
+    flex-basis: auto;
+  }
+  .fa-menubar__search input {
+    width: 120px;
+  }
+}

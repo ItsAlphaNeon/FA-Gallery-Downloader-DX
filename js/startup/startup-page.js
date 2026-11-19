@@ -1,39 +1,42 @@
 import statusDisplay from "./status-display.js";
 import startupForm from "./startup-form.js";
+import { compareVersions } from "../version.js";
 
 export default {
   name: 'startup-page',
   components: { statusDisplay, startupForm },
   template: `
     <div class="startup-container">
-      <div class="startup-header">
-        <div class="logged-in-status">Logged in as: 
-          <span>{{loggedInName}}</span>
-          <div class="user-icon">
-            <img v-if="iconSrc" :src="iconSrc" @error="fixIcon"/>
-          </div>
+      <nav class="fa-menubar startup-header">
+        <span class="fa-menubar__brand">🐾 FA Gallery Downloader DX</span>
+        <button class="fa-menubar__item" @click="sendEvent('view-gallery')">Gallery</button>
+        <a class="fa-menubar__item" :href="githubLink" @click.prevent="open">Releases</a>
+        <span class="fa-menubar__spacer"></span>
+        <div class="logged-in-status" :class="{ 'logged-out': !username }">
+          <span class="logged-in-status__text">
+            <template v-if="username">Logged in as <b>{{username}}</b></template>
+            <template v-else>Not logged in</template>
+          </span>
+          <button class="fa-menubar__item" @click="sendEvent('login')">{{username ? 'Switch account' : 'Log in'}}</button>
+          <img v-if="iconSrc" class="fa-menubar__avatar" :src="iconSrc" @error="fixIcon" alt=""/>
         </div>
-        <h2 class="startup-title">
-          🐾 FA Gallery Downloader DX 🐾
-         <div class="credits">
-          by SpottedSqueak, maintained by AlphaNeon
-        </div>
-        </h2>
-      </div>
-      <startup-form :is-logged-in="!!this.username" :outsideUsername="queryName" :outsideActive="isActive" :accounts="accounts" :download-accounts="downloadAccounts" @send-data="sendFormData" @send-event="sendEvent"></startup-form>
-      <status-display :msg="msg" :log-progress="logProgress" @clear-msg="clearMsg"></status-display>
-      <div class="version">
+      </nav>
+      <startup-form :is-logged-in="!!username" :outsideUsername="queryName" :outsideActive="isActive" :accounts="accounts" :download-accounts="downloadAccounts" @send-data="sendFormData" @send-event="sendEvent">
+        <status-display :msg="msg" :log-progress="logProgress" :is-active="isActive" @clear-msg="clearMsg"></status-display>
+      </startup-form>
+      <footer class="fa-footer version">
+        <div class="credits">FA Gallery Downloader DX | originally by SpottedSqueak, maintained by AlphaNeon | Not affiliated with Fur Affinity</div>
         <span v-if="!version">Loading version...</span>
         <template v-else>
           <template v-if="hasUpdate">
-            <a class="has-update" :href="githubLink" @click.prevent="open">Update available!</a> | 
+            <a class="has-update" :href="githubLink" @click.prevent="open">Update available!</a> |
           </template>
           <span>Current: <b>{{version}}</b></span>
           <span v-if="showVersion"> | Latest: <b>{{newVersion}}</b></span>
         </template>
         |
         <a :href="githubLink" @click.prevent="open"><b>Github Repo</b></a>
-      </div>
+      </footer>
     </div>
   `,
   data() {
@@ -75,9 +78,6 @@ export default {
     }, 10 * 60 * 1000);
   },
   computed: {
-    loggedInName() {
-      return this.username || '???';
-    },
     iconSrc() {
       if (!this.username) return '';
       const cleanName = this.username.split(' ')[0].toLowerCase().replace(/[_]/g, '');
@@ -87,16 +87,7 @@ export default {
       return this.version && this.newVersion;
     },
     hasUpdate() {
-      if (this.showVersion && this.version !== this.newVersion) {
-        const currVersion = this.version.split('.');
-        const newVersion = this.newVersion.split('.');
-        let i = 0;
-        while (i < currVersion.length) {
-          if (+newVersion[i] > +currVersion[i]) return true;
-          i++;
-        }
-      }
-      return false;
+      return !!this.showVersion && compareVersions(this.newVersion, this.version) > 0;
     }
   },
   methods: {
@@ -109,7 +100,7 @@ export default {
       window.userPath?.(data);
     },
     sendEvent(data) {
-      if (data.length) data = { choice: data };
+      if (typeof data === 'string') data = { choice: data };
       if (data.choice === 'repair') this.isActive = true;
       if (data.choice === 'stop-all') this.isActive = false;
       window.userPath?.(data);

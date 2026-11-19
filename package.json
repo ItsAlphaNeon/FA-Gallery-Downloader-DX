@@ -1,6 +1,6 @@
 {
   "name": "fa-gallery-downloader-dx",
-  "version": "2.8.0",
+  "version": "3.0.0",
   "description": "Dead simple gallery download for FurAffinity",
   "main": "index.js",
   "type": "module",
@@ -17,7 +17,8 @@
     "build-linux": "npm ci && npx package && node -e \"const fs=require('fs');const v=require('./package.json').version;fs.renameSync('../FA-Gallery-Downloader-DX.tar.gz','./fa-gallery-downloader-dx-v'+v+'.tar.gz')\"",
     "build-windows": "npm ci && npx package && node -e \"const fs=require('fs');const v=require('./package.json').version;fs.renameSync('../FA-Gallery-Downloader-DX.zip','./fa-gallery-downloader-dx-v'+v+'.zip')\"",
     "check": "npm run lint && npm test",
-    "check:fa": "node scripts/check-fa.mjs"
+    "check:fa": "node scripts/check-fa.mjs",
+    "preview:ui": "node scripts/ui-preview.mjs"
   },
   "dependencies": {
     "@puppeteer/browsers": "^2.2.3",
