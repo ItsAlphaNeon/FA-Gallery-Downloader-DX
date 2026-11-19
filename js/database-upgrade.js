@@ -122,7 +122,26 @@ export async function upgradeDatabase(db) {
     case 12:
       await fixInvalidUsernames();
       version = 13;
-      
+    case 13:
+      // FA now exposes a permanent per-account UUID ("Unique ID") on profile pages.
+      // Track users by it so username changes don't split a user's data.
+      await db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        uuid TEXT PRIMARY KEY,
+        username TEXT,
+        account_name TEXT,
+        pretty_username TEXT,
+        registered TEXT,
+        previous_usernames TEXT,
+        first_seen TEXT,
+        last_seen TEXT
+      )`);
+      await db.exec(`CREATE INDEX IF NOT EXISTS idx_users_account_name ON users(account_name)`);
+      await db.exec(`ALTER TABLE subdata ADD COLUMN user_uuid TEXT`).catch(() => {});
+      await db.exec(`ALTER TABLE favorites ADD COLUMN user_uuid TEXT`).catch(() => {});
+      await db.exec(`CREATE INDEX IF NOT EXISTS idx_subdata_user_uuid ON subdata(user_uuid)`);
+      version = 14;
+
     default:
       await db.exec(`VACUUM`);
       await db.exec(`PRAGMA user_version = ${version}`);

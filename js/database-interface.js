@@ -4,6 +4,7 @@ import fs from 'fs-extra';
 import process from 'node:process';
 import { DB_LOCATION as dbLocation } from './constants.js';
 import { upgradeDatabase } from './database-upgrade.js';
+import { escapeLike, sanitizeHtml, toInt } from './sanitize.js';
 
 const { open } = sqlite;
 
@@ -19,10 +20,7 @@ function genericInsert(table, columns, placeholders, data) {
 }
 
 export function deleteSubmission(url) {
-  return db.exec(`
-    DELETE FROM subdata
-    WHERE url = '${url}'
-  `);
+  return db.run('DELETE FROM subdata WHERE url = ?', url);
 }
 /**
  * Marks the given content_url as saved (downloaded).
@@ -35,8 +33,8 @@ export function setContentSaved(content_url) {
   SET
     is_content_saved = 1,
     moved_content = 1
-  WHERE content_url = '${content_url}'
-  `);
+  WHERE content_url = ?
+  `, content_url);
 }
 /**
  * Marks the given content_url as not saved (invalid file).
@@ -49,43 +47,47 @@ export function setContentNotSaved(content_url) {
   SET
     is_content_saved = 0,
     moved_content = 1
-  WHERE content_url = '${content_url}'
-  `);
+  WHERE content_url = ?
+  `, content_url);
 }
 export function setContentMoved(content_name) {
   return db.run(`
   UPDATE subdata
   SET
     moved_content = 1
-  WHERE content_name = '${content_name}'
-  `);
+  WHERE content_name = ?
+  `, content_name);
 }
 export function setContentMissing(content_name) {
   return db.run(`
   UPDATE subdata
   SET
     content_missing = 1
-  WHERE content_name = '${content_name}'
-  `);
+  WHERE content_name = ?
+  `, content_name);
 }
 export function setThumbnailMissing(thumbnail_url) {
   return db.run(`
   UPDATE subdata
   SET
     thumbnail_missing = 1
-  WHERE thumbnail_url = '${thumbnail_url}'
-  `);
+  WHERE thumbnail_url = ?
+  `, thumbnail_url);
 }
 export function setThumbnailSaved(url, thumbnail_url, thumbnail_name) {
   return db.run(`
     UPDATE subdata
     SET
       is_thumbnail_saved = 1,
-      thumbnail_url = '${thumbnail_url}',
-      thumbnail_name = '${thumbnail_name}'
-    WHERE url = '${url}'
-  `);
+      thumbnail_url = ?,
+      thumbnail_name = ?
+    WHERE url = ?
+  `, thumbnail_url, thumbnail_name, url);
 }
+const METADATA_COLUMNS = new Set([
+  'id', 'title', 'username', 'account_name', 'pretty_username', 'desc', 'tags', 'content_name',
+  'content_url', 'date_uploaded', 'thumbnail_url', 'rating', 'category',
+]);
 /**
  * Takes the given data for the given url and updates the appropriate database columns.
  * @param {String} url 
@@ -94,16 +96,18 @@ export function setThumbnailSaved(url, thumbnail_url, thumbnail_name) {
  */
 export function saveMetaData(url, d) {
   const data = [];
-  let queryNames = Object.getOwnPropertyNames(d)
-  .map(key => {
-    data.push(d[key]);
-    return `${key} = ?`
-  });
+  const queryNames = Object.getOwnPropertyNames(d)
+    .filter(key => METADATA_COLUMNS.has(key))
+    .map(key => {
+      data.push(d[key]);
+      return `${key} = ?`;
+    });
+  if (!queryNames.length) return Promise.resolve();
   return db.run(`
   UPDATE subdata
   SET 
     ${queryNames.join(',')}
-  WHERE url = '${url}'`, ...data);
+  WHERE url = ?`, ...data, url);
 }
 /**
  * Creates blank entries in the database for all given submission URLs
@@ -159,105 +163,183 @@ export function saveComments(comments) {
     date = excluded.date
   `, ...data);
 }
-export function saveFavorites(username, links) {
+/**
+ * Inserts or updates a user keyed by their permanent FA UUID. If the UUID is already
+ * known under a different username, the old name is kept in previous_usernames.
+ * @param {Object} u
+ * @returns {Promise<{renamedFrom: String|null}>}
+ */
+export async function saveUser({ uuid, username, account_name, pretty_username, registered }) {
+  const now = new Date().toISOString();
+  const existing = await db.get('SELECT username, previous_usernames FROM users WHERE uuid = ?', uuid);
+  if (!existing) {
+    await db.run(`
+      INSERT INTO users (uuid, username, account_name, pretty_username, registered, previous_usernames, first_seen, last_seen)
+      VALUES (?, ?, ?, ?, ?, '', ?, ?)
+    `, uuid, username, account_name, pretty_username, registered, now, now);
+    return { renamedFrom: null };
+  }
+  let renamedFrom = null;
+  let previous = existing.previous_usernames || '';
+  if (existing.username && existing.username !== username) {
+    renamedFrom = existing.username;
+    previous = Array.from(new Set([...previous.split(',').filter(Boolean), renamedFrom])).join(',');
+  }
+  await db.run(`
+    UPDATE users
+    SET username = ?, account_name = ?, pretty_username = ?, registered = ?, previous_usernames = ?, last_seen = ?
+    WHERE uuid = ?
+  `, username, account_name, pretty_username, registered, previous, now, uuid);
+  return { renamedFrom };
+}
+/**
+ * Finds a known user by (account) name.
+ * @param {String} name
+ * @returns {Promise<Object|undefined>}
+ */
+export function getUserByName(name) {
+  if (!name) return Promise.resolve(undefined);
+  return db.get(`
+    SELECT * FROM users
+    WHERE username = ? OR account_name = ? OR ',' || previous_usernames || ',' LIKE ?
+  `, name, name.replace(/_/g, ''), `%,${name},%`);
+}
+/**
+ * Stamps all of a user's saved submissions and favorites with their UUID.
+ * @param {String} uuid
+ * @param {String} username
+ */
+export async function linkUserUuid(uuid, username) {
+  if (!uuid || !username) return;
+  const accountName = username.replace(/_/g, '');
+  await db.run(`
+    UPDATE subdata SET user_uuid = ?
+    WHERE user_uuid IS NULL AND id IS NOT NULL AND (username = ? OR account_name = ?)
+  `, uuid, username, accountName);
+  await db.run(`
+    UPDATE favorites SET user_uuid = ?
+    WHERE user_uuid IS NULL AND username = ?
+  `, uuid, username);
+}
+/**
+ * Sets (or clears) the artist UUID of one submission, overwriting any previous value.
+ */
+export function setSubmissionUserUuid(id, uuid) {
+  return db.run('UPDATE subdata SET user_uuid = ? WHERE id = ?', uuid ?? null, String(id));
+}
+/**
+ * Usernames of saved submissions that still have no UUID.
+ */
+export function getUsernamesMissingUuid() {
+  return db.all(`
+    SELECT DISTINCT username
+    FROM subdata
+    WHERE user_uuid IS NULL AND username IS NOT NULL AND id IS NOT NULL
+    ORDER BY username ASC
+  `).then(rows => rows.map(r => r.username));
+}
+export function saveFavorites(username, links, userUuid = null) {
   let placeholder = [];
   const data = links.reduce((acc, val) => {
-    let data = [username+val, username, val];
+    let data = [username+val, username, val, userUuid];
     let marks = `(${data.map(()=>'?').join(',')})`;
     acc.push(...data);
     placeholder.push(marks);
     return acc;
     }, []);
-  return genericInsert('favorites', 'id, username, url', placeholder, data);
+  return genericInsert('favorites', 'id, username, url, user_uuid', placeholder, data);
 }
+const USER_SETTINGS_COLUMNS = new Set(['latest_browser_version']);
 /**
  * Set all user settings
  * @param {Object} userSettings 
  */
 export async function saveUserSettings(userSettings) {
-  let data = Object.getOwnPropertyNames(userSettings)
-  .map((key) => {
-    let val = userSettings[key];
-    switch (typeof val) {
-      case 'string':
-        val = `'${val}'`;
-        break;
-      case 'object':
-        val = `'${JSON.stringify(val)}'`;
-        break;
-    }
-    return `${key} = ${val}`
-  });
-  db.run(`
+  const values = [];
+  const data = Object.getOwnPropertyNames(userSettings)
+    .filter(key => USER_SETTINGS_COLUMNS.has(key))
+    .map((key) => {
+      const val = userSettings[key];
+      values.push(typeof val === 'object' && val !== null ? JSON.stringify(val) : val);
+      return `${key} = ?`;
+    });
+  if (!data.length) return;
+  return db.run(`
   UPDATE usersettings
   SET ${data.join(',')}
-  `);
+  `, ...values);
 }
 export function setOwnedAccount(username) {
   if (!username) return;
   return genericInsert('ownedaccounts', 'username', ['(?)'], [username]);
 }
 export function deleteOwnedAccount(username) {
-  return db.exec(`
-    DELETE FROM ownedaccounts
-    WHERE username = '${username}'
-  `);
+  return db.run('DELETE FROM ownedaccounts WHERE username = ?', username);
 }
 
 // SELECT/GET functions
 export function getGalleryPage(offset = 0, count = 25, query = {}, sortOrder ='DESC', ratingFilter = { general: true, mature: true, adult: true }) {
-  let { username, searchTerm, galleryType } = query;
+  const { username, searchTerm, galleryType } = query || {};
+  const params = [];
   let searchQuery = '';
   let galleryQuery = '';
   let usernameQuery = '';
   let ratingQuery = '';
+  const order = String(sortOrder).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+  const limit = toInt(count, 1, 500, 25);
+  const skip = toInt(offset, 0, Number.MAX_SAFE_INTEGER, 0);
 
   const allowedRatings = [];
-  if (ratingFilter.general) allowedRatings.push("'General'");
-  if (ratingFilter.mature) allowedRatings.push("'Mature'");
-  if (ratingFilter.adult) allowedRatings.push("'Adult'");
+  if (ratingFilter?.general) allowedRatings.push('General');
+  if (ratingFilter?.mature) allowedRatings.push('Mature');
+  if (ratingFilter?.adult) allowedRatings.push('Adult');
 
+  let ratingParams = [];
   if (allowedRatings.length === 0) {
     ratingQuery = 'AND 1=0';
   } else if (allowedRatings.length < 3) {
     const nullClause = ratingFilter.general ? ' OR rating IS NULL' : '';
-    ratingQuery = `AND (rating IN (${allowedRatings.join(',')})${nullClause})`;
+    ratingQuery = `AND (rating IN (${allowedRatings.map(() => '?').join(',')})${nullClause})`;
+    ratingParams = allowedRatings;
   }
 
   if (searchTerm) {
-    searchTerm = `${searchTerm.replace(/\s/gi, '%')}`;
-    searchQuery =`
+    const term = `%${String(searchTerm).trim().split(/\s+/).map(escapeLike).join('%')}%`;
+    searchQuery = `
       AND (
-        title LIKE '%${searchTerm}%'
+        title LIKE ? ESCAPE '\\'
         OR
-        tags LIKE '%${searchTerm}%'
+        tags LIKE ? ESCAPE '\\'
         OR
-        desc LIKE '%${searchTerm}%'
-        OR 
-        content_name LIKE '%${searchTerm}'
+        desc LIKE ? ESCAPE '\\'
+        OR
+        content_name LIKE ? ESCAPE '\\'
       )`;
+    params.push(term, term, term, term);
   }
   if (galleryType && username) {
     galleryQuery = `
       AND url IN (
         SELECT url
         FROM favorites f
-        WHERE f.username LIKE '%${username.replace(/_/g, '%')}%'
+        WHERE f.username LIKE ? ESCAPE '\\'
       )
     `;
-  } else {
-    if (username) {
-      usernameQuery = `
-        AND (
-          username LIKE '%${username}%'
-          OR account_name LIKE '%${username}%'
-        )
-        `;
-    }
+    params.push(`%${String(username).split('_').map(escapeLike).join('%')}%`);
+  } else if (username) {
+    usernameQuery = `
+      AND (
+        username LIKE ? ESCAPE '\\'
+        OR account_name LIKE ? ESCAPE '\\'
+      )
+      `;
+    const like = `%${escapeLike(username)}%`;
+    params.push(like, like);
   }
+  params.push(...ratingParams);
   const dbQuery = `
-  SELECT 
-    id, 
+  SELECT
+    id,
     title,
     username,
     account_name,
@@ -275,10 +357,10 @@ export function getGalleryPage(offset = 0, count = 25, query = {}, sortOrder ='D
   ${usernameQuery}
   ${galleryQuery}
   ${ratingQuery}
-  ORDER BY content_name ${sortOrder}
-  LIMIT ${count} OFFSET ${offset}
+  ORDER BY content_name ${order}
+  LIMIT ${limit} OFFSET ${skip}
   `;
-  return db.all(dbQuery);
+  return db.all(dbQuery, ...params);
 }
 /**
  * Gets all submission info for given id.
@@ -291,13 +373,15 @@ export async function getSubmissionPage(id) {
   data.submission = await db.get(`
   SELECT *
   FROM subdata
-  WHERE id = ${id}
-  `);
-  data.comments = await db.all(`
+  WHERE id = ?
+  `, String(id));
+  // Descriptions come from scraped HTML and are rendered in the gallery page: sanitize on the way out
+  if (data.submission) data.submission.desc = sanitizeHtml(data.submission.desc);
+  data.comments = (await db.all(`
     SELECT *
     FROM commentdata
-    WHERE submission_id = '${id}'
-  `);
+    WHERE submission_id = ?
+  `, String(id))).map(c => ({ ...c, desc: sanitizeHtml(c.desc) }));
   return data;
 }
 
@@ -315,8 +399,8 @@ export function getAllUnmovedContentData() {
  * @returns {Promise<Array>}
  */
 export function getAllUnsavedContent(name) {
-  const nameQuery = name ? `AND 
-    (username LIKE '${name}' OR account_name LIKE '${name}')
+  const nameQuery = name ? `AND
+    (username LIKE ? OR account_name LIKE ?)
     `:`AND username IS NOT NULL`;
   return db.all(`
     SELECT content_url, content_name, username, account_name
@@ -327,7 +411,7 @@ export function getAllUnsavedContent(name) {
     AND content_name NOT LIKE '%.'
     ${nameQuery}
     ORDER BY content_name DESC
-  `);
+  `, ...(name ? [name, name] : []));
 }
 
 export function getAllUnsavedThumbnails() {
@@ -351,8 +435,10 @@ export function getAllUnsavedThumbnails() {
  */
 export function needsRepair(username) {
   let usernameQuery = '';
+  const params = [];
   if (username) {
-    usernameQuery = `AND (username = '${username}' OR account_name = '${username}')`;
+    usernameQuery = 'AND (username = ? OR account_name = ?)';
+    params.push(username, username);
   }
   return db.all(`
   SELECT url
@@ -370,7 +456,7 @@ export function needsRepair(username) {
       WHERE date LIKE '%ago%'
     )
   )
-  `);
+  `, ...params);
 }
 export function getAllFavUsernames() {
   return db.all(`
@@ -407,9 +493,9 @@ export function getComments(id) {
   return db.all(`
   SELECT *
   FROM commentdata
-  WHERE submission_id = ${id}
+  WHERE submission_id = ?
   AND desc IS NOT NULL
-  `);
+  `, String(id));
 }
 
 export function getOwnedAccounts() {
@@ -428,10 +514,10 @@ export function getAllFavoritesForUser(username) {
     WHERE url IN (
       SELECT url
       FROM favorites
-      WHERE username = '${username}'
-        OR account_name = '${username}'
+      WHERE username = ?
+        OR account_name = ?
     )
-  `);
+  `, username, username);
 }
 export function getAllSubmissionsForUser(username) {
   if (!username) return;
@@ -439,12 +525,12 @@ export function getAllSubmissionsForUser(username) {
     SELECT *
     FROM subdata
     WHERE (
-      username = '${username}' OR account_name = '${username}'
+      username = ? OR account_name = ?
     )
     AND is_content_saved = 1
     AND id IS NOT NULL
     ORDER BY content_name ASC
-  `);
+  `, username, username);
 }
 /**
  * 

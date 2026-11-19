@@ -1,11 +1,12 @@
 import { __dirname } from './utils.js';
 import * as db from './database-interface.js';
-import { join, resolve } from 'path';
+import { resolve } from 'path';
 import { scrapeComments } from './scrape-data.js';
 import { downloadSpecificContent } from './download-content.js';
 import { handleLogin, username } from './login.js';
 import open from 'open';
 import { pathToFileURL } from 'url';
+import { isSafeExternalUrl, normalizeSubmissionUrl } from './sanitize.js';
 
 const galleryLink = pathToFileURL(resolve(__dirname, './html/gallery.html')).href;
 const contentPath = pathToFileURL(resolve('file://', '../fa_gallery_downloader/downloaded_content')).href;
@@ -19,7 +20,7 @@ async function sendData() {
   };
   await page.evaluate(`window.setPageInfo?.(${JSON.stringify(data)})`);
 }
-export async function initGallery(browser, startupLink) {
+export async function initGallery(browser) {
   if (page) return;
   page = await browser.newPage();
   await page.bringToFront();
@@ -49,12 +50,13 @@ export async function initGallery(browser, startupLink) {
     if (name === '__getGalleryPageBinding') {
       result = await db.getGalleryPage(data.offset, data.count, data.query, data.sortOrder, data.ratingFilter);
     } else if (name === '__getSubmissionPageBinding') {
-      result = await db.getSubmissionPage(data);
+      result = /^\d+$/.test(String(data)) ? await db.getSubmissionPage(data) : { submission: undefined, comments: [] };
     } else if (name === '__downloadCommentsBinding') {
       if (!username) await handleLogin(browser);
       if (!username) result = false;
       else {
-        const isComplete = await scrapeComments(null, data.id, data.url);
+        const commentsUrl = normalizeSubmissionUrl(data?.url);
+        const isComplete = (commentsUrl && /^\d+$/.test(String(data.id))) ? await scrapeComments(null, String(data.id), commentsUrl) : false;
         result = !!isComplete;
       }
     } else if (name === '__downloadContentBinding') {
@@ -65,7 +67,7 @@ export async function initGallery(browser, startupLink) {
         result = !!isComplete;
       }
     } else if (name === '__openUrlBinding') {
-      if (data) open(data);
+      if (isSafeExternalUrl(data)) open(data);
       return;
     } else if (name === '__getContentPathBinding') {
       result = contentPath;

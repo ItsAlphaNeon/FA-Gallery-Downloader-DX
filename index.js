@@ -2,11 +2,13 @@ import { init as initUtils, __dirname, getHTML, stop, sendStartupInfo, releaseCh
 import * as db from './js/database-interface.js';
 import { FA_DOWN, FA_URL_BASE, FA_USER_BASE } from './js/constants.js';
 import { checkIfLoggedIn, handleLogin, forceNewLogin, username, checkForOldTheme } from './js/login.js';
-import { getSubmissionLinks, scrapeSubmissionInfo } from './js/scrape-data.js';
+import { getSubmissionLinks, scrapeSubmissionInfo, saveUserProfile, ensureUserProfile } from './js/scrape-data.js';
 import { initDownloads } from './js/download-content.js';
 import { initGallery } from './js/view-gallery.js';
-import { join, resolve } from 'node:path';
+import { isSafeExternalUrl, normalizeSubmissionUrl, parseUsernameList } from './js/sanitize.js';
+import { resolve } from 'node:path';
 import open from 'open';
+import random from 'random';
 import fs from 'fs-extra';
 import { setupBrowser } from './js/setup-browsers.js';
 import { spawn } from 'node:child_process';
@@ -18,8 +20,9 @@ let inProgress = false;
 // handles single submission downloads, useful for not downloading an entire gallery
 async function startSubmissionDownload(url) { 
   if (inProgress) return console.log('[Data] Program already running!');
+  const submissionUrl = normalizeSubmissionUrl(url);
+  if (!submissionUrl) return console.log('[Warn] Not a valid FurAffinity submission link!');
   inProgress = true;
-  const submissionUrl = url.endsWith('/') ? url : url + '/';
   console.log(`[Data] Downloading single submission: ${submissionUrl}`);
   await db.saveLinks([submissionUrl]).catch((e) => {
     if (!e?.message?.includes('UNIQUE constraint failed')) throw e;
@@ -39,8 +42,11 @@ async function startSubmissionDownload(url) {
 async function startDataScraping(uName = username, scrapeGallery = true, scrapeComments = true, scrapeFavorites) {
   if (inProgress) return console.log('[Data] Program already running!');
   if (uName) {
+    // Only well-formed FA usernames may be turned into URLs and folder names
+    const { valid: allNames, invalid } = parseUsernameList(uName);
+    if (invalid.length) console.log(`[Warn] Ignoring invalid username(s): ${invalid.join(', ')}`);
+    if (!allNames.length) return console.log('[Warn] No valid usernames given!');
     inProgress = true;
-    const allNames = uName.split(',').map(n => n.trim()).filter(n => !!n);
     let name = allNames.shift();
     while (name && !stop.now) {
       const FA_GALLERY_URL = `${FA_URL_BASE}/gallery/${name}/`;
@@ -53,13 +59,16 @@ async function startDataScraping(uName = username, scrapeGallery = true, scrapeC
         console.log(`[Warn] Invalid username: ${name}`);
         break;
       }
+      // Record the account's permanent UUID and link any existing data to it
+      const user = await saveUserProfile($).catch((e) => console.log(`[Warn] Could not save user profile: ${e.message}`));
+      if (user) console.log(`[Data] Tracking ${user.username} by UUID ${user.uuid}`);
       // Scrape data from gallery pages
       if (scrapeGallery) {
         await getSubmissionLinks({ url: FA_GALLERY_URL, username: name });
         await getSubmissionLinks({ url: FA_SCRAPS_URL, isScraps: true, username: name });
       }
       if (scrapeFavorites)
-        await getSubmissionLinks({ url: FA_FAVORITES_URL, isFavorites: true, username: name });
+        await getSubmissionLinks({ url: FA_FAVORITES_URL, isFavorites: true, username: name, userUuid: user?.uuid });
       name = allNames.shift();
     }
     if (stop.now) console.log('[Data] Process halted!');
@@ -122,12 +131,12 @@ async function init() {
       await sendStartupInfo();
     } else if (choice === 'view-gallery') {
       console.log(`[Data] Opening gallery viewer...`);
-      await initGallery(browser, startupLink);
+      await initGallery(browser);
     } else if (choice === 'stop-all') {
       stop.now = true;
       console.log('Stopping data scraping...');
     } else if (choice === 'open') {
-      if (data.url) open(data.url);
+      if (isSafeExternalUrl(data.url)) open(data.url);
     } else if (choice === 'repair') {
       if (inProgress)
         return console.log(`[Data] Please stop data scraping before restarting!`);
@@ -135,6 +144,14 @@ async function init() {
       inProgress = true;
       setActive(true);
       await db.deleteBlankSubmissionInfo();
+      // Backfill UUIDs for users already in the database (one profile request per unknown user)
+      const missingUuid = await db.getUsernamesMissingUuid();
+      if (missingUuid.length) console.log(`[Data] Looking up UUIDs for ${missingUuid.length} users...`);
+      for (const name of missingUuid) {
+        if (stop.now) break;
+        await ensureUserProfile(name).catch(() => {});
+        await waitFor(random.int(1000, 2000));
+      }
       const inNeedOfRepair = await db.needsRepair();
       if (inNeedOfRepair.length) {
         console.log('Database incomplete! Working on that now...');
@@ -153,11 +170,11 @@ async function init() {
       sendStartupInfo(await releaseCheck());
     } else if (choice === 'delete-account') {
       stop.now = true;
-      await db.deleteOwnedAccount(data.name);
+      if (typeof data.name === 'string') await db.deleteOwnedAccount(data.name);
       sendStartupInfo();
     } else if(choice === 'delete-user-account') {
       stop.now = true;
-      await db.deleteAccount(data.name);
+      if (typeof data.name === 'string') await db.deleteAccount(data.name);
       sendStartupInfo();
     } else if (choice === 'import-old-data') {
       // Check for old folder

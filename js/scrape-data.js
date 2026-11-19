@@ -1,18 +1,76 @@
 import random from 'random';
-import { FA_URL_BASE } from './constants.js';
+import { FA_URL_BASE, FA_USER_BASE } from './constants.js';
 import * as db from './database-interface.js';
-import { logProgress, waitFor, getHTML, stop, sendStartupInfo, saveDebugFile } from './utils.js';
+import { logProgress, waitFor, getHTML, stop, sendStartupInfo } from './utils.js';
 
 const scrapeID = 'scrape-div';
 const progressID = 'data';
 const maxRetries = 6;
+const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+/**
+ * Parses the profile header of a user/gallery/scraps page for the account's identity.
+ * Returns null if no UUID could be found (e.g. page layout changed, or not a profile page).
+ * @param {Cheerio} $
+ * @returns {Object|null}
+ */
+export function processUserHTML($) {
+  const idLink = $('a[href^="/user/id:"]').first().attr('href') || '';
+  const uuid = (idLink.match(UUID_REGEX) || $('.user-title').text().match(UUID_REGEX) || [])[0];
+  if (!uuid) return null;
+  const username = $('.c-usernameBlock__userName').first().attr('href')?.split('/user/')[1]?.replace(/\/$/, '')
+    || $('meta[property="og:url"]').attr('content')?.split('/user/')[1]?.replace(/\/$/, '')
+    || '';
+  if (!username) return null;
+  const pretty_username = $('.c-usernameBlock__displayName .js-displayName').first().text().trim();
+  const registeredEl = $('.user-title .popup_date').first();
+  const epoch = Number(registeredEl.attr('data-time'));
+  const registered = epoch ? new Date(epoch * 1000).toISOString() : registeredEl.text().trim();
+  return {
+    uuid: uuid.toLowerCase(),
+    username,
+    account_name: username.replace(/_/g, ''),
+    pretty_username,
+    registered,
+  };
+}
+/**
+ * Saves the user identity found in the given profile HTML and links their existing data to it.
+ * @param {Cheerio} $
+ * @returns {Promise<Object|null>} The saved user, or null if no UUID was found.
+ */
+export async function saveUserProfile($) {
+  const user = processUserHTML($);
+  if (!user) {
+    console.log('[Warn] Could not find user UUID, FA UI may have changed');
+    return null;
+  }
+  const { renamedFrom } = await db.saveUser(user);
+  if (renamedFrom) console.log(`[Data] User rename detected: ${renamedFrom} -> ${user.username} (${user.uuid})`);
+  await db.linkUserUuid(user.uuid, user.username);
+  if (renamedFrom) await db.linkUserUuid(user.uuid, renamedFrom);
+  return user;
+}
+const profileChecked = new Set();
+/**
+ * Makes sure the given username has a UUID on record, fetching their profile once if needed.
+ * @param {String} username
+ */
+export async function ensureUserProfile(username) {
+  if (!username || profileChecked.has(username)) return;
+  profileChecked.add(username);
+  if (await db.getUserByName(username)) return;
+  const $ = await getHTML(FA_USER_BASE + username).catch(() => false);
+  if (!$) return;
+  await saveUserProfile($);
+}
 
 /**
  * Walks the user's gallery in order to gather all submission links for future download.
  * @param {String} url Gallery URL
  * @param {Boolean} isScraps Is this the scraps folder or not?
  */
-export async function getSubmissionLinks({ url, username, isScraps = false, isFavorites = false }) {
+export async function getSubmissionLinks({ url, username, userUuid = null, isScraps = false, isFavorites = false }) {
   let dirName = (isFavorites) ? 'favorites': (isScraps) ? 'scraps' : 'gallery';
   const divID = `${scrapeID}${isScraps ? '-scraps':''}`;
   let currPageCount = 1;
@@ -50,7 +108,7 @@ export async function getSubmissionLinks({ url, username, isScraps = false, isFa
       logProgress.reset(progressID);
       break;
     }
-    if (isFavorites && username) await db.saveFavorites(username, newLinks);
+    if (isFavorites && username) await db.saveFavorites(username, newLinks, userUuid);
     currLinks = currLinks += newLinks.length;
     currPageCount++;
     if (isFavorites) {
@@ -158,7 +216,11 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
     const data = processSubmissionHTML($, links[index].url);
     // Save data to db
     await db.saveMetaData(links[index].url, data);
-    // Save comments 
+    // Link to the artist's permanent UUID (fetches their profile once if unknown)
+    await ensureUserProfile(data.username).catch(() => {});
+    const artist = await db.getUserByName(data.username);
+    await db.setSubmissionUserUuid(data.id, artist?.uuid);
+    // Save comments
     if (downloadComments) await scrapeComments($, data.id);
     index++;
     if (index % 2) await waitFor(random.int(1000, 2500));
