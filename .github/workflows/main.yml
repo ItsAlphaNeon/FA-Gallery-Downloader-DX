@@ -46,46 +46,21 @@ jobs:
   create-draft-release:
     needs: [insiders-build]
     runs-on: ubuntu-latest
-    permissions: write-all
+    # The built-in GITHUB_TOKEN only needs write access to repository contents to create a release.
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@main
         with:
-          name: fa-gallery-downloader-dx-${{github.ref_name}}.zip
-      - uses: actions/download-artifact@main
-        with:
-          name: fa-gallery-downloader-dx-${{github.ref_name}}-linux.tar.gz
-      - uses: actions/download-artifact@main
-        with:
-          name: fa-gallery-downloader-dx-${{github.ref_name}}-macos.tar.gz
-      - uses: actions/create-release@v1
-        id: create-release
+          pattern: fa-gallery-downloader-dx-${{github.ref_name}}*
+          merge-multiple: true
+      - name: Create draft release with the builds attached
         env:
-          GITHUB_TOKEN: ${{secrets.MY_GITHUB_TOKEN}}
-        with:
-          tag_name: ${{github.ref_name}}
-          release_name: ${{github.ref_name}}
-          draft: true
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{secrets.MY_GITHUB_TOKEN}}
-        with:
-          upload_url: ${{steps.create-release.outputs.upload_url}}
-          asset_path: fa-gallery-downloader-dx-${{github.ref_name}}.zip
-          asset_name: fa-gallery-downloader-dx-${{github.ref_name}}.zip
-          asset_content_type: application/zip
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{secrets.MY_GITHUB_TOKEN}}
-        with:
-          upload_url: ${{steps.create-release.outputs.upload_url}}
-          asset_path: fa-gallery-downloader-dx-${{github.ref_name}}-linux.tar.gz
-          asset_name: fa-gallery-downloader-dx-${{github.ref_name}}-linux.tar.gz
-          asset_content_type: application/gzip
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{secrets.MY_GITHUB_TOKEN}}
-        with:
-          upload_url: ${{steps.create-release.outputs.upload_url}}
-          asset_path: fa-gallery-downloader-dx-${{github.ref_name}}-macos.tar.gz
-          asset_name: fa-gallery-downloader-dx-${{github.ref_name}}-macos.tar.gz
-          asset_content_type: application/gzip
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          TAG: ${{github.ref_name}}
+        run: |
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "$TAG" \
+            --notes "FA Gallery Downloader DX $TAG" \
+            "fa-gallery-downloader-dx-$TAG.zip" \
+            "fa-gallery-downloader-dx-$TAG-linux.tar.gz" \
+            "fa-gallery-downloader-dx-$TAG-macos.tar.gz"
