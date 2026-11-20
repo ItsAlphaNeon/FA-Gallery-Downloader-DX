@@ -9,7 +9,7 @@ async function fixFavoritesUsernames(db) {
     )`);
   await db.exec(`
     INSERT INTO favTemp
-    SELECT LOWER(id) AS id, LOWER(username) AS username, url FROM favorites
+    SELECT LOWER(id) AS id, url, LOWER(username) AS username FROM favorites
   `);
   await db.exec(`INSERT INTO favorites SELECT * FROM favTemp`);
   await db.exec(`DELETE FROM favorites WHERE LOWER(id) <> id`);
@@ -36,6 +36,7 @@ async function createThumbnailInfo(db) {
  */
 export async function upgradeDatabase(db) {
   let { user_version:version } = await db.get('PRAGMA user_version');
+  const startVersion = version;
   switch(version) {
     case 0:
     case 1:
@@ -165,6 +166,8 @@ export async function upgradeDatabase(db) {
     }
 
     default:
+      // An up-to-date database matches no case and lands here too; only compact after a real upgrade.
+      if (version === startVersion) return;
       await db.exec(`VACUUM`);
       await db.exec(`PRAGMA user_version = ${version}`);
       console.log(`Database now at: v${version}`);
