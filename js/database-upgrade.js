@@ -1,5 +1,8 @@
 import { cleanupFileStructure, deleteInvalidFiles, fixInvalidUsernames } from "./download-content.js";
 
+/** Bump this together with a new case in upgradeDatabase. */
+export const LATEST_DB_VERSION = 16;
+
 async function fixFavoritesUsernames(db) {
   await db.exec(`
     CREATE TABLE favTemp (
@@ -32,11 +35,16 @@ async function createThumbnailInfo(db) {
 /**
  * Used for making future upgrades/updates to the database, to enforce
  * a schema.
- * @returns If an error occurred or not. If yes, we need to exit!
+ * @returns {Promise<{from: number, to: number}|undefined>} The versions upgraded between, if an upgrade ran.
  */
 export async function upgradeDatabase(db) {
   let { user_version:version } = await db.get('PRAGMA user_version');
   const startVersion = version;
+  // Upgrades run before the app window opens, so say so in the console window; a long one otherwise
+  // looks like the app failed to start.
+  if (version < LATEST_DB_VERSION) {
+    console.log(`[Data] Upgrading database from v${version} to v${LATEST_DB_VERSION}. This can take a while for large libraries, please keep this window open...`);
+  }
   switch(version) {
     case 0:
     case 1:
@@ -151,6 +159,7 @@ export async function upgradeDatabase(db) {
       // Comment usernames were saved as "Display Name   ~login" with embedded whitespace. Keep just the login.
       // One transaction: tens of thousands of separately committed updates take hours on a hard drive.
       const rows = await db.all(`SELECT id, username FROM commentdata WHERE username LIKE '%' || char(10) || '%'`);
+      if (rows.length) console.log(`[Data] Cleaning up ${rows.length} saved comment usernames...`);
       await db.exec('BEGIN');
       try {
         for (const { id, username } of rows) {
@@ -170,6 +179,7 @@ export async function upgradeDatabase(db) {
       if (version === startVersion) return;
       await db.exec(`VACUUM`);
       await db.exec(`PRAGMA user_version = ${version}`);
-      console.log(`Database now at: v${version}`);
+      console.log(`[Data] Database upgraded to v${version}`);
+      return { from: startVersion, to: version };
   }
 }

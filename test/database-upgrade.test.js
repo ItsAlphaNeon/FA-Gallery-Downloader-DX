@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
-import { upgradeDatabase } from '../js/database-upgrade.js';
+import { upgradeDatabase, LATEST_DB_VERSION } from '../js/database-upgrade.js';
 
 async function v15Database(rows) {
   const db = await open({ filename: ':memory:', driver: sqlite3.Database });
@@ -16,10 +16,16 @@ async function v15Database(rows) {
   return db;
 }
 
-test('upgrade: comment usernames are cleaned in one go and the version is bumped', async () => {
+test('upgrade: comment usernames are cleaned in one go and the version is bumped', async (t) => {
   const db = await v15Database(5000);
-  await upgradeDatabase(db);
-  assert.equal((await db.get('PRAGMA user_version')).user_version, 16);
+  const lines = [];
+  const log = t.mock.method(console, 'log', (msg) => lines.push(msg));
+  const result = await upgradeDatabase(db);
+  log.mock.restore();
+  assert.deepEqual(result, { from: 15, to: LATEST_DB_VERSION });
+  assert.match(lines[0], /Upgrading database from v15 to v16/);
+  assert.ok(lines.some(l => /Cleaning up 5000 saved comment usernames/.test(l)));
+  assert.equal((await db.get('PRAGMA user_version')).user_version, LATEST_DB_VERSION);
   assert.equal((await db.get(`SELECT count(*) n FROM commentdata WHERE username LIKE '%' || char(10) || '%'`)).n, 0);
   assert.deepEqual(await db.get(`SELECT username, account_name FROM commentdata WHERE id = '7'`), { username: 'some_user7', account_name: 'someuser7' });
   await db.close();

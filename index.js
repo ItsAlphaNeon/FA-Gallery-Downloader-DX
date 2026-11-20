@@ -97,7 +97,7 @@ async function init() {
   // Setup utils
   setup();
   // Init database
-  await db.init();
+  const upgrade = await db.init();
   const { page, browser } = await setupBrowser();
   // Setup user logging
   await initUtils(page);
@@ -230,6 +230,7 @@ async function init() {
     await sendStartupInfo(await releaseCheck());
   });
   await page.goto(startupLink);
+  if (upgrade) console.log(`[Data] Database upgraded from v${upgrade.from} to v${upgrade.to}`);
   const isFAUp = await isSiteActive();
   if (isFAUp && await checkIfLoggedIn(browser)) await sendStartupInfo();
   if (!isFAUp) console.log(FA_DOWN);
