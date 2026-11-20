@@ -148,10 +148,18 @@ export async function upgradeDatabase(db) {
       version = 15;
     case 15: {
       // Comment usernames were saved as "Display Name   ~login" with embedded whitespace. Keep just the login.
+      // One transaction: tens of thousands of separately committed updates take hours on a hard drive.
       const rows = await db.all(`SELECT id, username FROM commentdata WHERE username LIKE '%' || char(10) || '%'`);
-      for (const { id, username } of rows) {
-        const name = username.match(/~\s*(\S+)\s*$/)?.[1] || username.trim().split(/\s+/)[0];
-        await db.run('UPDATE commentdata SET username = ?, account_name = ? WHERE id = ?', name, name.replace(/_/g, ''), id);
+      await db.exec('BEGIN');
+      try {
+        for (const { id, username } of rows) {
+          const name = username.match(/~\s*(\S+)\s*$/)?.[1] || username.trim().split(/\s+/)[0];
+          await db.run('UPDATE commentdata SET username = ?, account_name = ? WHERE id = ?', name, name.replace(/_/g, ''), id);
+        }
+        await db.exec('COMMIT');
+      } catch (e) {
+        await db.exec('ROLLBACK');
+        throw e;
       }
       version = 16;
     }
