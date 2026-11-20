@@ -1,7 +1,27 @@
 import { cleanupFileStructure, deleteInvalidFiles, fixInvalidUsernames } from "./download-content.js";
 
 /** Bump this together with a new case in upgradeDatabase. */
-export const LATEST_DB_VERSION = 16;
+export const LATEST_DB_VERSION = 17;
+
+const FTS_COLUMNS = ['title', 'desc', 'tags', 'username', 'content_name'];
+const ftsValues = (row) => FTS_COLUMNS.map(c => `${row}.${c}`).join(', ');
+// External-content FTS5 index over subdata, kept in sync by triggers. Underscores are part of a word, as on FA.
+export const SEARCH_INDEX_SQL = `
+  CREATE VIRTUAL TABLE IF NOT EXISTS subdata_fts USING fts5(
+    ${FTS_COLUMNS.join(', ')},
+    content='subdata', content_rowid='rowid', tokenize="unicode61 tokenchars '_'"
+  );
+  CREATE TRIGGER IF NOT EXISTS subdata_fts_insert AFTER INSERT ON subdata BEGIN
+    INSERT INTO subdata_fts(rowid, ${FTS_COLUMNS.join(', ')}) VALUES (new.rowid, ${ftsValues('new')});
+  END;
+  CREATE TRIGGER IF NOT EXISTS subdata_fts_delete AFTER DELETE ON subdata BEGIN
+    INSERT INTO subdata_fts(subdata_fts, rowid, ${FTS_COLUMNS.join(', ')}) VALUES ('delete', old.rowid, ${ftsValues('old')});
+  END;
+  CREATE TRIGGER IF NOT EXISTS subdata_fts_update AFTER UPDATE OF ${FTS_COLUMNS.join(', ')} ON subdata BEGIN
+    INSERT INTO subdata_fts(subdata_fts, rowid, ${FTS_COLUMNS.join(', ')}) VALUES ('delete', old.rowid, ${ftsValues('old')});
+    INSERT INTO subdata_fts(rowid, ${FTS_COLUMNS.join(', ')}) VALUES (new.rowid, ${ftsValues('new')});
+  END;
+`;
 
 async function fixFavoritesUsernames(db) {
   await db.exec(`
@@ -173,11 +193,18 @@ export async function upgradeDatabase(db) {
       }
       version = 16;
     }
+    case 16:
+      // Full-text index for the FA-style search page. Filled after the VACUUM below, which can renumber rowids.
+      console.log('[Data] Building the search index...');
+      await db.exec(`ALTER TABLE subdata ADD COLUMN species TEXT`).catch(() => {});
+      await db.exec(SEARCH_INDEX_SQL);
+      version = 17;
 
     default:
       // An up-to-date database matches no case and lands here too; only compact after a real upgrade.
       if (version === startVersion) return;
       await db.exec(`VACUUM`);
+      await db.exec(`INSERT INTO subdata_fts(subdata_fts) VALUES('rebuild')`);
       await db.exec(`PRAGMA user_version = ${version}`);
       console.log(`[Data] Database upgraded to v${version}`);
       return { from: startVersion, to: version };

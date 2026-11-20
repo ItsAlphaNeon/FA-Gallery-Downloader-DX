@@ -38,9 +38,10 @@ export default {
         <div class="button-row library-actions">
           <button id="view-gallery" type="button" class="button" @click="viewGallery">View Gallery</button>
           <button id="repair" type="button" class="button" @click="repair" :title="repairAlt">Repair Database</button>
+          <button id="refresh-details" type="button" class="button" @click="refreshDetails" :title="refreshAlt">Refresh Details</button>
           <button class="button user-input__file" type="button" id="old_downloads" @click="importData" title="Previous data should be in the same folder as this program">Import old data</button>
         </div>
-        <p class="font-small hint">Missing data? <b>Repair</b> re-checks tags, ratings and dates. <b>Import</b> pulls in a previous install placed next to this program.</p>
+        <p class="font-small hint">Missing data? <b>Repair</b> re-checks tags, ratings and dates. <b>Refresh Details</b> re-reads older submissions for species and theme (for the users in the download box, or everyone if it's empty); it's slow, and can be stopped and continued. <b>Import</b> pulls in a previous install placed next to this program.</p>
       </div>
 
       <div class="account-list">
@@ -86,6 +87,7 @@ export default {
       notActive: true,
       tab: 0,
       repairAlt: 'Check and repair submission data (tags, ratings, etc.)',
+      refreshAlt: 'Re-read submissions saved before v3.1.0 for species, theme, rating and keywords. Saved files are not downloaded again.',
     };
   },
   watch: {
@@ -126,6 +128,9 @@ export default {
     },
     repair() {
       this.$emit('sendEvent', 'repair');
+    },
+    refreshDetails() {
+      this.$emit('sendEvent', { choice: 'refresh-details', name: this.isSubmissionUrl ? '' : this.username });
     },
     stopAll() {
       this.notActive = true;

@@ -450,3 +450,125 @@ span.minigallery-navigation__step {
     height: 50px;
   }
 }
+
+/* Search sidebar (FA's /search/ page: form column on the left) */
+.content-with-sidebar > .search-sidebar {
+  flex: 0 0 330px;
+  padding: 20px 16px;
+}
+.search-form {
+  display: flex;
+  flex-flow: column;
+  gap: 8px;
+}
+.search-form h4 {
+  margin: 10px 0 0;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--fa-highlight);
+}
+.search-form__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.search-form__head h4 {
+  margin: 0;
+}
+.search-form__box {
+  display: flex;
+}
+.search-form__box input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+}
+.search-form__box .button {
+  min-width: 46px;
+  border-radius: 0 4px 4px 0;
+}
+.search-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+.search-form__row select {
+  padding: 5px 4px;
+}
+.search-form__page {
+  width: 52px;
+  padding: 6px 8px;
+  border: 1px solid var(--fa-section-border);
+  background: var(--fa-bg);
+  color: var(--fa-text);
+  font: inherit;
+}
+.search-form__labeled {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 10px;
+}
+.search-form__labeled label {
+  font-weight: 700;
+}
+.search-form__labeled select {
+  width: 100%;
+}
+.search-form__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px 8px;
+}
+.search-form__stack {
+  display: flex;
+  flex-flow: column;
+  gap: 2px;
+}
+.search-form label:has(> input[type="radio"]),
+.search-form label:has(> input[type="checkbox"]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.search-form input[type="radio"], .search-form input[type="checkbox"] {
+  accent-color: var(--fa-highlight);
+}
+.search-form input[type="date"] {
+  padding: 4px 6px;
+  border: 1px solid var(--fa-section-border);
+  background: var(--fa-bg);
+  color: var(--fa-text);
+  font: inherit;
+  color-scheme: dark;
+}
+.search-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+.search-help {
+  padding: 8px 10px;
+  background: var(--fa-stat-box);
+  border: 1px solid var(--fa-section-border);
+}
+.search-help p {
+  margin: 6px 0 2px;
+}
+.search-help ul {
+  margin: 0;
+  padding-left: 16px;
+}
+.search-help code {
+  color: var(--fa-highlight);
+  font-family: Consolas, monospace;
+}
+@media (max-width: 1000px) {
+  .content-with-sidebar > .search-sidebar {
+    flex-basis: auto;
+  }
+}

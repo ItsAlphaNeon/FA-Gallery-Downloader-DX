@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as cheerio from 'cheerio';
-import { processUserHTML, processSubmissionHTML, parseGalleryLinks, parseFavoritesNextPage, parseComments } from '../js/scrape-data.js';
+import { pickDetails, processUserHTML, processSubmissionHTML, parseGalleryLinks, parseFavoritesNextPage, parseComments } from '../js/scrape-data.js';
 import { parseLoggedInUsername, isClassicTheme } from '../js/login.js';
 import { checkLoggedIn, checkUser, checkGalleryLinks, checkSubmission, checkComments } from './structure-checks.js';
 
@@ -56,7 +56,8 @@ test('submission page: metadata', () => {
   assert.equal(d.username, 'testuser');
   assert.equal(d.pretty_username, 'TestUser');
   assert.equal(d.rating, 'General');
-  assert.equal(d.category, 'All');
+  assert.equal(d.category, 'All / All');
+  assert.equal(d.species, 'Shark');
   assert.equal(d.uploaded_at, 1762623497);
   assert.equal(d.content_name, '1762623497.testuser_hugs-with-balloon-balloo-neon.png');
   assert.equal(d.content_url, 'https://d.furaffinity.net/art/testuser/1762623497/1762623497.testuser_hugs-with-balloon-balloo-neon.png');
@@ -88,4 +89,17 @@ test('structure checks actually catch breakage', () => {
   assert.ok(checkSubmission({}).length >= 8);
   assert.ok(checkGalleryLinks([]).length);
   assert.ok(checkComments([{ id: 'x', username: 'a\n  ~a', desc: 'd', date: 'd' }]).length);
+});
+
+test('refresh details: only descriptive fields, and blanks never overwrite saved values', () => {
+  const d = processSubmissionHTML(load('submission.html'), SUBMISSION_URL);
+  const picked = pickDetails(d);
+  assert.deepEqual(Object.keys(picked).sort(), ['category', 'desc', 'rating', 'species', 'tags', 'title', 'uploaded_at']);
+  assert.equal(picked.species, 'Shark');
+  const failed = pickDetails({ ...d, rating: '', category: '', species: '', uploaded_at: null, content_name: 'new.png' });
+  assert.equal('rating' in failed, false);
+  assert.equal('category' in failed, false);
+  assert.equal('uploaded_at' in failed, false);
+  assert.equal('content_name' in failed, false);
+  assert.equal(failed.species, '', 'marked as refreshed even when FA lists no species');
 });

@@ -112,7 +112,7 @@ async function init() {
     const { choice } = data;
     // Only starting new work clears a stop request. Any other click must not, or it would
     // un-stop a job that is still winding down (and let it carry on running).
-    if (choice === 'start-download' || choice === 'repair') {
+    if (choice === 'start-download' || choice === 'repair' || choice === 'refresh-details') {
       if (inProgress) {
         return console.log(stop.now
           ? '[Data] Still stopping the previous job, please try again in a moment.'
@@ -175,6 +175,30 @@ async function init() {
         setActive(false);
         console.log(`[Data] Database OK!`);
       }
+    } else if (choice === 'refresh-details') {
+      const { valid: names, invalid } = parseUsernameList(data.name || '');
+      if (invalid.length) console.log(`[Warn] Ignoring invalid username(s): ${invalid.join(', ')}`);
+      const todo = await db.getSubmissionsMissingDetails(names);
+      const who = names.length ? names.join(', ') : 'the whole library';
+      if (!todo.length) {
+        console.log(`[Data] Details are already up to date for ${who}.`);
+        return setActive(false);
+      }
+      if (!await isSiteActive()) {
+        setActive(false);
+        return console.log(FA_DOWN);
+      }
+      if (!await checkIfLoggedIn(browser)) await handleLogin();
+      inProgress = true;
+      setActive(true);
+      const hours = (todo.length * 1.6 / 3600).toFixed(1);
+      console.log(`[Data] Refreshing details (species, theme, rating, keywords) for ${todo.length} submissions of ${who}. Roughly ${hours} hours; you can stop and pick it up later.`);
+      await scrapeSubmissionInfo({ data: todo, downloadComments: false, detailsOnly: true })
+        .finally(() => {
+          inProgress = false;
+          setActive(false);
+        });
+      if (!stop.now) console.log('[Data] Details refreshed!');
     } else if (choice === 'release-check') {
       sendStartupInfo(await releaseCheck());
     } else if (choice === 'delete-account') {

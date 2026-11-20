@@ -211,7 +211,23 @@ const metadataID = 'scrape-metadata';
  * Gathers all of the relevant metadata from all uncrawled submission pages.
  * @returns 
  */
-export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
+// What "Refresh details" updates. File names and links are left alone so saved files stay matched up.
+const DETAIL_FIELDS = ['title', 'desc', 'tags', 'rating', 'category', 'species', 'uploaded_at'];
+export function pickDetails(data) {
+  const details = { species: data.species || '' };
+  for (const key of DETAIL_FIELDS) {
+    // A field that failed to parse must not wipe what is already saved
+    if (data[key] !== '' && data[key] != null) details[key] = data[key];
+  }
+  return details;
+}
+
+/**
+ * @param {Object} options
+ * @param {Array<{url}>} [options.data] Submissions to read (default: links not read yet)
+ * @param {Boolean} [options.detailsOnly] Only update descriptive fields, and keep submissions FA has deleted
+ */
+export async function scrapeSubmissionInfo({ data = null, downloadComments, detailsOnly = false }) {
   let links = data || await db.getSubmissionLinks();
   if (!links.length || stop.now) return logProgress.reset(progressID);
   console.log(`[Data] Saving data for ${links.length} submissions...`, metadataID);
@@ -223,6 +239,12 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
     .then(_$ => {
       if (!_$ || !_$('.submission-title').length) {
         if(_$('.section-body').text().includes('The submission you are trying to find is not in our database.')) {
+          if (detailsOnly) {
+            // Keep the archived copy; just stop asking FA about it
+            console.log(`[Data] Deleted on FA, keeping saved copy: ${links[index].url}`);
+            db.saveMetaData(links[index].url, { species: '' });
+            return false;
+          }
           console.log(`[Error] Confirmed deleted, removing: ${links[index].url}`);
           db.deleteSubmission(links[index].url);
         } else {
@@ -252,7 +274,7 @@ export async function scrapeSubmissionInfo({ data = null, downloadComments }) {
     retryCount = 0;
     const data = processSubmissionHTML($, links[index].url);
     // Save data to db
-    await db.saveMetaData(links[index].url, data);
+    await db.saveMetaData(links[index].url, detailsOnly ? pickDetails(data) : data);
     // Link to the artist's permanent UUID (fetches their profile once if unknown)
     await ensureUserProfile(data.username).catch(() => {});
     const artist = await db.getUserByName(data.username);
@@ -352,9 +374,16 @@ export function processSubmissionHTML($, url) { // Seperated from scrapeSubmissi
     console.log('[Warn] Could not parse rating, FA UI may have changed');
   }
 
+  // Labels (Category, Theme, Species, ...) and values sit in two parallel rows of spans.
+  // Category is saved as "Category / Theme", the way older FA pages showed it.
   let category = '';
+  let species = '';
   try {
-    category = $('.submission-content-stats > span:not(.highlight) > span:first-child').text().trim();
+    const labels = $('.submission-content-stats > span.highlight > span').map((_, el) => $(el).text().trim().toLowerCase()).get();
+    const values = $('.submission-content-stats > span:not(.highlight) > span').map((_, el) => $(el).text().trim()).get();
+    const stat = (name) => labels.includes(name) ? values[labels.indexOf(name)] || '' : '';
+    category = [stat('category'), stat('theme')].filter(Boolean).join(' / ') || values[0] || '';
+    species = stat('species');
   } catch (e) {
     console.log('[Warn] Could not parse category, FA UI may have changed');
   }
@@ -374,5 +403,6 @@ export function processSubmissionHTML($, url) { // Seperated from scrapeSubmissi
     thumbnail_url,
     rating,
     category,
+    species,
   };
 }

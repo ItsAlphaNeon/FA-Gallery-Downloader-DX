@@ -101,7 +101,7 @@ export default {
     },
     sendEvent(data) {
       if (typeof data === 'string') data = { choice: data };
-      if (data.choice === 'repair') this.isActive = true;
+      if (data.choice === 'repair' || data.choice === 'refresh-details') this.isActive = true;
       if (data.choice === 'stop-all') this.isActive = false;
       window.userPath?.(data);
     },

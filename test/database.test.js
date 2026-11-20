@@ -33,7 +33,7 @@ test('fresh database is created at the latest schema version', async () => {
   const { user_version } = await raw.get('PRAGMA user_version');
   const tables = (await raw.all("SELECT name FROM sqlite_master WHERE type='table'")).map(t => t.name);
   await raw.close();
-  assert.ok(user_version >= 16, `schema version ${user_version}`);
+  assert.ok(user_version >= 17, `schema version ${user_version}`);
   for (const t of ['subdata', 'commentdata', 'favorites', 'users', 'ownedaccounts', 'usersettings']) assert.ok(tables.includes(t), `missing table ${t}`);
 });
 
@@ -74,9 +74,16 @@ test('gallery queries: search, user, rating filter, ordering', async () => {
   const q = (query, order = 'DESC', ratings = ALL_RATINGS) => db.getGalleryPage(0, 25, query, order, ratings);
   assert.equal((await q({})).length, 3);
   assert.equal((await q({ searchTerm: '100%' })).length, 1, 'LIKE wildcards in the search must be literal');
-  assert.equal((await q({ searchTerm: 'first test' })).length, 1, 'words match in order');
-  assert.equal((await q({ searchTerm: 'test first' })).length, 0);
-  assert.equal((await q({ searchTerm: 'first 100' })).length, 1);
+  assert.equal((await q({ searchTerm: 'first test' })).length, 1);
+  assert.equal((await q({ searchTerm: 'test first' })).length, 1, 'like FA, word order does not matter');
+  assert.equal((await q({ searchTerm: '"test first"' })).length, 0, 'unless it is a phrase');
+  assert.equal((await q({ searchTerm: 'fir' })).length, 1, 'plain words match the start of a word');
+  assert.equal((await q({ searchTerm: 'first | second' })).length, 2);
+  assert.equal((await q({ searchTerm: 'first second', mode: 'any' })).length, 2);
+  assert.equal((await q({ searchTerm: 'first second', mode: 'all' })).length, 0);
+  assert.equal((await q({ searchTerm: '-first' })).length, 2, 'a lone NOT returns everything else');
+  assert.equal((await q({ searchTerm: '@keywords a' })).length, 1);
+  assert.equal((await q({ searchTerm: '@title fir' })).length, 0, 'field searches are exact words');
   assert.equal((await q({ username: 'testuser' })).length, 2);
   assert.equal((await q({}, 'DESC', { general: true })).length, 2, 'General also includes unrated (NULL) submissions');
   assert.equal((await q({}, 'DESC', { adult: true })).length, 1);
@@ -84,6 +91,36 @@ test('gallery queries: search, user, rating filter, ordering', async () => {
   const asc = await q({ username: 'testuser' }, 'ASC');
   const desc = await q({ username: 'testuser' }, 'DESC');
   assert.deepEqual(asc.map(r => r.id), desc.map(r => r.id).reverse());
+});
+
+test('gallery queries: FA search page filters', async () => {
+  const q = (query, order = 'DESC') => db.getGalleryPage(0, 25, query, order, ALL_RATINGS);
+  await db.saveMetaData('https://www.furaffinity.net/view/2/', { category: 'Music / Techno', species: 'Wolf', content_name: '2.testuser_b.mp3' });
+  assert.deepEqual((await q({ category: 'Music' })).map(r => r.id), ['2']);
+  assert.deepEqual((await q({ theme: 'Techno' })).map(r => r.id), ['2']);
+  assert.deepEqual((await q({ species: 'Wolf' })).map(r => r.id), ['2']);
+  assert.deepEqual((await q({ types: ['music'] })).map(r => r.id), ['2']);
+  assert.equal((await q({ types: ['art', 'music'] })).length, 3);
+  assert.equal((await q({ types: [] })).length, 0);
+  assert.deepEqual((await q({ range: 'manual', from: '2023-11-14', to: '2023-11-14' })).map(r => r.id).sort(), ['1', '2']);
+  assert.equal((await q({ range: '1day' })).length, 0, 'uploads from 2023 are older than a day');
+  assert.equal((await q({ range: 'all' })).length, 3);
+  // relevancy: a title match ranks above a description-only match
+  await db.saveMetaData('https://www.furaffinity.net/view/9/', { title: 'Other', desc: 'mentions second once', rating: 'General' });
+  assert.deepEqual((await q({ searchTerm: 'second', orderBy: 'relevancy' })).map(r => r.id), ['2', '9']);
+  assert.deepEqual((await q({ searchTerm: 'second', orderBy: 'relevancy' }, 'ASC')).map(r => r.id), ['9', '2']);
+  assert.equal((await q({ searchTerm: '((("' })).length, 3, 'a query with no words is ignored');
+});
+
+test('refresh details: lists submissions without species, optionally per artist', async () => {
+  const urls = async (names) => (await db.getSubmissionsMissingDetails(names)).map(r => r.url).sort();
+  const before = await urls();
+  assert.ok(before.includes('https://www.furaffinity.net/view/1/'));
+  assert.ok(!before.includes('https://www.furaffinity.net/view/2/'), 'species already saved');
+  assert.deepEqual(await urls(['TestUser']), ['https://www.furaffinity.net/view/1/']);
+  assert.deepEqual(await urls(['nobody']), []);
+  await db.saveMetaData('https://www.furaffinity.net/view/1/', { species: '' });
+  assert.ok(!(await urls()).includes('https://www.furaffinity.net/view/1/'), 'an empty species counts as refreshed');
 });
 
 test('SQL injection attempts are inert', async () => {
@@ -113,8 +150,9 @@ test('descriptions and comments are sanitized when read for the gallery', async 
   assert.match(page.comments[0].desc, /<b>hi<\/b>/);
 });
 
-test('upgrade v15 -> v16 cleans legacy comment usernames', async () => {
+test('upgrade v15 -> latest cleans legacy comment usernames', async () => {
   const raw = await open({ filename: ':memory:', driver: sqlite3.Database });
+  await raw.exec('CREATE TABLE subdata (id TEXT PRIMARY KEY, title TEXT, desc TEXT, tags TEXT, username TEXT, content_name TEXT)');
   await raw.exec('CREATE TABLE commentdata (id TEXT, username TEXT, account_name TEXT)');
   await raw.run('INSERT INTO commentdata VALUES (?, ?, ?)', 'cid:1', 'Damianss127\n    \n    \n        ~damianss', 'x');
   await raw.run('INSERT INTO commentdata VALUES (?, ?, ?)', 'cid:2', 'blue_wolf', 'bluewolf');
@@ -122,6 +160,6 @@ test('upgrade v15 -> v16 cleans legacy comment usernames', async () => {
   await upgradeDatabase(raw);
   assert.deepEqual(await raw.get("SELECT username, account_name FROM commentdata WHERE id = 'cid:1'"), { username: 'damianss', account_name: 'damianss' });
   assert.deepEqual(await raw.get("SELECT username, account_name FROM commentdata WHERE id = 'cid:2'"), { username: 'blue_wolf', account_name: 'bluewolf' });
-  assert.equal((await raw.get('PRAGMA user_version')).user_version, 16);
+  assert.equal((await raw.get('PRAGMA user_version')).user_version, 17);
   await raw.close();
 });
