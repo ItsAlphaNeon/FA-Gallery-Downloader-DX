@@ -435,6 +435,8 @@ export function getAllUnsavedThumbnails() {
 }
 /**
  * Queries for all entries without necessary data.
+ * A missing uploaded_at/posted_at alone doesn't count: everything saved before 3.0.0 lacks them and
+ * the viewer falls back to the saved date text, so flagging them would re-scrape whole libraries.
  * @returns {Promise<Array>} All entries in need of repair
  */
 export function needsRepair(username) {
@@ -454,11 +456,10 @@ export function needsRepair(username) {
     OR rating IS NULL
     OR category IS NULL
     OR date_uploaded LIKE '%ago%'
-    OR uploaded_at IS NULL
     OR id IN (
       SELECT submission_id
       FROM commentdata
-      WHERE date LIKE '%ago%' OR posted_at IS NULL
+      WHERE date LIKE '%ago%'
     )
   )
   `, ...params);
